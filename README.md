@@ -26,6 +26,17 @@ dsh plugin --profile web add github:Zimeng-Luo/dsh-file-manager#main
 
 更新时先 remove dsh-file-manager 再 add 上述来源，之后重启。仅重启不会下载新代码。目录内资料与独立的设置文件不随包更新删除。
 
+## 0.1.1：后端接口 404 修复
+
+后端接口独立于模型工具、文件系统和提示词服务启动。工具服务稍后出现时自动注册；复制来源文件时使用调用会话的文件系统。SQLite 在打开资料库时才加载，运行时缺少 SQLite 不再阻止整个后端导入。已保存目录打不开时，页面显示具体错误，并允许重新选择目录恢复。
+
+如果装过旧版，需要重新下载安装后重启，刷新页面不会更新插件：
+
+~~~powershell
+dsh plugin --profile desktop remove dsh-file-manager
+dsh plugin --profile desktop add github:Zimeng-Luo/dsh-file-manager#main
+~~~
+
 ## 怎么使用
 
 在会话中直接说：

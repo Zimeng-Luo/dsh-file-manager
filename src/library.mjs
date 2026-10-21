@@ -1,4 +1,3 @@
-import { DatabaseSync } from 'node:sqlite';
 import { randomUUID, createHash } from 'node:crypto';
 import { constants } from 'node:fs';
 import { mkdir, open, readdir, realpath, lstat } from 'node:fs/promises';
@@ -64,6 +63,11 @@ export class Library {
     const config = { ...DEFAULTS, ...options };
     for (const field of Object.keys(DEFAULTS)) {
       if (!Number.isSafeInteger(config[field]) || config[field] < 1) fail('invalid-config', field + ' must be a positive integer.');
+    }
+    let DatabaseSync;
+    try { ({ DatabaseSync } = await import('node:sqlite')); }
+    catch (error) {
+      throw new LibraryError('sqlite-unavailable','The Harness host cannot load node:sqlite (Node ' + process.versions.node + '). Run Harness with a Node.js 22.19+ runtime that includes SQLite. ' + error.message);
     }
     await mkdir(directory, { recursive: true });
     const root = await realpath(directory);

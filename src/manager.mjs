@@ -11,7 +11,9 @@ export class LibraryManager {
   constructor(config) {
     this.config = config;
     this.settingsPath = path.join(config.stateDir, 'settings.json');
-    this.ready = this.#initialize();
+    this.initializationError = null;
+    this.attemptedDirectory = config.directory;
+    this.ready = this.#initialize().catch(error => { this.initializationError = error; });
   }
   async #initialize() {
     let saved;
@@ -21,6 +23,7 @@ export class LibraryManager {
       throw new LibraryError('invalid-settings', 'Unsupported library settings; restore a valid settings.json.');
     }
     const directory = saved?.directory ?? this.config.directory;
+    this.attemptedDirectory = directory;
     if (directory) {
       this.#library = await Library.open(directory, this.config);
       try { await this.#library.refresh(); }
@@ -35,7 +38,8 @@ export class LibraryManager {
   }
   status() {
     return this.#run(() => ({
-      configured: Boolean(this.#library),directory: this.#library?.root ?? '',
+      configured: Boolean(this.#library),directory: this.#library?.root ?? this.attemptedDirectory ?? '',
+      initializationError: this.initializationError ? { code:this.initializationError.code ?? 'initialization-failed',message:this.initializationError.message } : null,
       maxFileBytes: this.config.maxFileBytes ?? DEFAULTS.maxFileBytes,
       pollIntervalMs: this.config.pollIntervalMs ?? 5000,
     }));
@@ -57,12 +61,15 @@ export class LibraryManager {
       } catch (error) { await next.close(); throw error; }
       const previous = this.#library;
       this.#library = next;
+      this.initializationError = null;
+      this.attemptedDirectory = next.root;
       await previous?.close();
       return { configured: true,directory: next.root };
     });
   }
   call(method, ...args) {
     return this.#run(async () => {
+      if (this.initializationError) throw this.initializationError;
       if (!this.#library) throw new LibraryError('not-configured', 'Open the Library page and configure its directory first.');
       return this.#library[method](...args);
     });

@@ -9,7 +9,7 @@ const text = description => ({ type: 'string',description });
 const limit = maximum => ({ type: 'integer',minimum: 1,maximum });
 
 /** Native tools are shared across allowed sessions, including dsh-im sessions. */
-export function createLibraryTools(manager,fs,workingDirectory) {
+export function createLibraryTools(manager,fs,workingDirectory,getServices) {
   return [
     {
       name: 'library_status',description: 'Check whether the persistent shared library is configured and where its host directory is.',
@@ -36,9 +36,11 @@ export function createLibraryTools(manager,fs,workingDirectory) {
         let bytes,name,source;
         if (hasPath) {
           if (!args.sourcePath.trim()) throw new LibraryError('invalid-source', 'sourcePath cannot be empty.');
-          const cwd = exec.agent ? workingDirectory.get(exec.agent.session) : undefined;
-          const target = await fs.resolve(args.sourcePath, { cwd,signal: exec.signal });
-          bytes = await fs.readBytes(target, exec.signal, status.maxFileBytes);
+          const services = getServices ? getServices(exec) : { fs,workingDirectory };
+          if (!services.fs) throw new LibraryError('filesystem-unavailable','This agent has no filesystem provider. Upload the file in the Library page, or enable a filesystem provider for this agent.');
+          const cwd = exec.agent ? services.workingDirectory?.get(exec.agent.session) : undefined;
+          const target = await services.fs.resolve(args.sourcePath, { cwd,signal: exec.signal });
+          bytes = await services.fs.readBytes(target, exec.signal, status.maxFileBytes);
           name = args.name ?? args.sourcePath.replace(/\\/g,'/').split('/').pop();
           source = args.sourcePath;
         } else {

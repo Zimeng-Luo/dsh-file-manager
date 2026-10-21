@@ -129,6 +129,7 @@ module.exports = function dshFileManagerClient(require) {
             onChange:event => { dirty.current=true; setDirectory(event.target.value); } }),
           button('saveDirectory',{ type:'submit',disabled:busy || !directory.trim() })),
         h('p',{ className:'dlf-muted' },t('directoryHint'))),
+      status?.initializationError ? h('div',{ role:'alert',className:'dlf-error' },status.initializationError.message) : null,
       error ? h('div',{ role:'alert',className:'dlf-error' },error) : null,
       notice ? h('p',{ role:'status' },notice) : null,
       !status?.configured ? h('p',null,t('setup')) : h(React.Fragment,null,
