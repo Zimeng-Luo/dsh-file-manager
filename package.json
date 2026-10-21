@@ -1,0 +1,67 @@
+{
+  "name": "dsh-file-manager",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "DeepSeek Harness 共享资料库：独立页面、文件入库、跨会话检索与模型工具",
+  "main": "./src/host.mjs",
+  "exports": {
+    ".": "./src/host.mjs",
+    "./client": "./client.js",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "src",
+    "skills",
+    "scripts/build.cjs",
+    "client.js",
+    "cordis.patch.yml",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "node scripts/build.cjs",
+    "test": "node --test tests/*.test.mjs",
+    "check": "node scripts/build.cjs --check && node --check client.js && npm test",
+    "prepack": "npm run check"
+  },
+  "engines": {
+    "node": ">=22.19.0",
+    "dsh": ">=0.2.1-rc.2 <0.3.0"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Zimeng-Luo/dsh-file-manager.git"
+  },
+  "keywords": [
+    "dsh-plugin",
+    "deepseek-harness",
+    "library",
+    "knowledge-base"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "inject": [
+        "@deepseek-ai/dsh-client-connection",
+        "@deepseek-ai/dsh-client-ui-slots",
+        "@deepseek-ai/dsh-client-locale"
+      ],
+      "platform": "web"
+    }
+  },
+  "dependencies": {
+    "mammoth": "^1.9.0",
+    "unpdf": "^1.0.0",
+    "zod": "^4.1.0"
+  },
+  "peerDependencies": {
+    "react": "^18.3.1"
+  },
+  "devDependencies": {
+    "react": "^18.3.1",
+    "react-test-renderer": "^18.3.1"
+  }
+}
