@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import path from 'node:path';
 import { tmpdir } from 'node:os';
-import { mkdtemp,readFile,writeFile,mkdir,rm,symlink } from 'node:fs/promises';
+import { mkdtemp,readFile,writeFile,mkdir,rm,symlink,realpath } from 'node:fs/promises';
 import { Library,safeName } from '../src/library.mjs';
 import { LibraryManager } from '../src/manager.mjs';
 import { createLibraryTools } from '../src/tools.mjs';
@@ -117,7 +117,7 @@ test('directory selection persists and switching libraries keeps contents separa
   const item=await manager.call('store',{ bytes:Buffer.from('first-library'),name:'first.md' });
   await manager.configure(path.join(base,'second')); assert.equal((await manager.call('list')).total,0);
   await manager.close(); manager=new LibraryManager(config); await manager.ready;
-  assert.equal((await manager.status()).directory,path.join(base,'second'));
+  assert.equal((await manager.status()).directory,await realpath(path.join(base,'second')));
   await manager.configure(path.join(base,'first'));
   assert.equal((await manager.call('read',item.id)).text,'first-library');
 });
