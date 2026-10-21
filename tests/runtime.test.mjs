@@ -30,6 +30,7 @@ test('real Cordis loader and Harness Connection serve the Library RPC',async () 
     const envelope = await response.json();
     assert.equal(envelope.result.ok,true);
     assert.equal(envelope.result.value.configured,false);
+    await Promise.all([...ctx.registry.values()].flatMap(runtime => Array.from(runtime.fibers,fiber => fiber.await())));
     const prompt = await ctx.get('systemPrompt').assemble();
     assert.equal(prompt.tools.filter(tool => tool.name.startsWith('library_')).length,6);
     assert.equal(prompt.sections.some(section => section.name === 'library:usage'),true);
