@@ -17,7 +17,7 @@ export const Config = z.object({
   chunkChars: z.number().int().positive().default(DEFAULTS.chunkChars),
   maxScanFiles: z.number().int().positive().default(DEFAULTS.maxScanFiles),
   pollIntervalMs: z.number().int().min(1000).default(5000),
-});
+}).prefault({});
 
 /** Mount shared storage, native model tools, skill guidance and optional browser RPC. */
 export async function apply(ctx,input = {}) {

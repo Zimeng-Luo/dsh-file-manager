@@ -1,6 +1,6 @@
 {
   "name": "dsh-file-manager",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "type": "module",
   "description": "DeepSeek Harness 共享资料库：独立页面、文件入库、跨会话检索与模型工具",
   "main": "./src/host.mjs",
@@ -66,6 +66,8 @@
     "@deepseek-ai/cordis": "4.0.5",
     "@deepseek-ai/dsh-tools": "0.2.1-rc.2",
     "@deepseek-ai/dsh-system-prompt": "0.2.1-rc.2",
-    "@deepseek-ai/dsh-client-connection": "0.2.1-rc.2"
+    "@deepseek-ai/dsh-client-connection": "0.2.1-rc.2",
+    "@deepseek-ai/dsh-app-boot": "0.2.1-rc.2",
+    "js-yaml": "^4.1.0"
   }
 }
