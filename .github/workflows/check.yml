@@ -45,6 +45,7 @@ jobs:
         with:
           name: library-gallery-preview
           path: .artifacts/
+          include-hidden-files: true
       - run: node scripts/publish-preview.mjs
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'
         env:

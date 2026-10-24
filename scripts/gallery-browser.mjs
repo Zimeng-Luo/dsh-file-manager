@@ -106,6 +106,8 @@ try {
   await page.getByRole('tab',{ name:'收藏',exact:true }).click();
   await expect(page.locator('.dlf-card')).toHaveCount(1);
   await expect(page.getByRole('button',{ name:'预览 已整理的实验原图',exact:true })).toBeVisible();
+  await page.getByRole('tab',{ name:'推荐',exact:true }).click();
+  await expect(page.locator('.dlf-card').first()).toHaveAttribute('data-item-id',firstImage.id);
   await page.getByRole('tab',{ name:'全部',exact:true }).click();
   await page.getByRole('button',{ name:'新建',exact:true }).click();
   await page.getByRole('menuitem',{ name:'新建文件夹',exact:true }).click();
@@ -128,7 +130,10 @@ try {
   const uploaded=(await manager.call('browse',{ query:'上传测试' })).items[0];
   assert.equal(uploaded.folderId,'');
   assert.deepEqual(await readFile(uploaded.path),upload);
-  await page.getByRole('navigation',{ name:'所在文件夹',exact:true }).getByRole('button',{ name:'资料库',exact:true }).click();
+  await page.getByRole('button',{ name:'编辑文件夹',exact:true }).click();
+  await page.getByRole('dialog').getByRole('button',{ name:'移除文件夹',exact:true }).click();
+  await expect(page.getByRole('navigation',{ name:'所在文件夹',exact:true })).toHaveCount(0);
+  await expect(page.locator('.dlf-folder')).toHaveCount(4);
   await page.getByRole('button',{ name:'新建',exact:true }).click();
   await page.getByRole('menuitem',{ name:'新建笔记',exact:true }).click();
   await page.getByLabel('标题',{ exact:true }).fill('浏览器创建的笔记');
@@ -145,6 +150,9 @@ try {
   await page.getByRole('button',{ name:'网格视图',exact:true }).click();
   await page.setViewportSize({ width:390,height:844 });
   await expect(page.locator('.dlf-card')).toHaveCount(17);
+  await page.reload();
+  await expect(page.getByRole('button',{ name:'网格视图',exact:true })).toHaveAttribute('aria-pressed','true');
+  await expect(page.locator('.dlf-card')).toHaveCount(17);
   await page.screenshot({ path:path.join(output,'gallery-mobile.png'),fullPage:true });
   const overflow=await page.locator('.dlf-root').evaluate(element => element.scrollWidth>element.clientWidth+1);
   assert.equal(overflow,false,'mobile gallery must fit the viewport');
@@ -152,7 +160,7 @@ try {
   assert.equal(original.favorite,true); assert.equal(original.folderId,folders[1].id);
   assert.deepEqual(original.tags,['浏览器回归','原图']);
   assert.deepEqual(errors,[]);
-  console.log('Browser checks passed: desktop and mobile gallery, authenticated thumbnails route, original image preview, edit, favorite, folder creation, upload, drag/drop, note, search, list, batch move and settings.');
+  console.log('Browser checks passed: desktop and mobile gallery, thumbnail endpoint, original image preview, edit, favorite, folder creation, upload, drag/drop, note, search, list, batch move and settings.');
 } finally {
   await browser?.close();
   if (server) await new Promise(resolve => server.close(resolve));

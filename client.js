@@ -3,7 +3,7 @@ window.__ModuleLoader__.load({id:"dsh-file-manager",factory:function dshFileMana
   const zh = {
     library:'资料库',all:'全部',recommended:'推荐',favorites:'收藏',folders:'文件夹',images:'图像',items:'项目',
     search:'搜索资料库',new:'新建',upload:'上传文件',newNote:'新建笔记',newFolder:'新建文件夹',settings:'资料库设置',
-    grid:'网格视图',listView:'列表视图',recent:'最近添加',oldest:'最早添加',name:'名称',size:'文件大小',recommendedSort:'收藏与最近',
+    sort:'排序',grid:'网格视图',listView:'列表视图',recent:'最近添加',oldest:'最早添加',name:'名称',size:'文件大小',recommendedSort:'收藏与最近',
     directory:'资料库目录',directoryHint:'填写运行 Harness 的机器上的绝对路径。',saveDirectory:'保存目录',
     setup:'设置一个资料库目录，开始保存和整理你的资料。',intro:'将文件留在这里，在任何会话里继续使用。',
     title:'标题',description:'备注',tags:'标签',tagsHint:'用逗号分隔标签',content:'笔记内容',saveNote:'保存笔记',
@@ -23,7 +23,7 @@ window.__ModuleLoader__.load({id:"dsh-file-manager",factory:function dshFileMana
   const en = {
     library:'Library',all:'All',recommended:'Suggested',favorites:'Favorites',folders:'Folders',images:'Images',items:'Items',
     search:'Search library',new:'New',upload:'Upload files',newNote:'New note',newFolder:'New folder',settings:'Library settings',
-    grid:'Grid view',listView:'List view',recent:'Recently added',oldest:'Oldest first',name:'Name',size:'File size',recommendedSort:'Favorites and recent',
+    sort:'Sort by',grid:'Grid view',listView:'List view',recent:'Recently added',oldest:'Oldest first',name:'Name',size:'File size',recommendedSort:'Favorites and recent',
     directory:'Library directory',directoryHint:'Use an absolute path on the Harness host.',saveDirectory:'Save directory',
     setup:'Choose a library directory to start saving and organizing.',intro:'Keep files here and use them in any conversation.',
     title:'Title',description:'Description',tags:'Tags',tagsHint:'Separate tags with commas',content:'Note content',saveNote:'Save note',
@@ -64,7 +64,7 @@ window.__ModuleLoader__.load({id:"dsh-file-manager",factory:function dshFileMana
     '.dlf-section{margin:26px 0 16px;display:flex;align-items:center;justify-content:space-between;gap:12px}.dlf-section h2{font-size:17px;font-weight:550;margin:0}.dlf-count,.dlf-muted{font-size:12px;color:var(--lf-muted)}.dlf-sort{border:0!important;padding:6px 8px!important;background:transparent!important;color:var(--lf-muted)!important;font-size:12px!important;max-width:150px}.dlf-root select option{background:#222225;color:white}',
     '.dlf-folders{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:16px}.dlf-folder{border-radius:17px!important;background:var(--lf-card)!important;overflow:hidden;text-align:left;min-height:162px;padding:0!important;transition:background .15s,transform .15s}.dlf-folder:hover{background:var(--lf-hover)!important;transform:translateY(-2px)}.dlf-folder-head{display:flex;align-items:center;gap:9px;padding:14px 16px;border-bottom:1px solid #ffffff05}.dlf-ellipsis{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}.dlf-folder-head .dlf-count{margin-left:auto}.dlf-folder-cover{height:108px;display:flex;align-items:center;justify-content:center;color:#b2b2b8;position:relative}.dlf-folder-stack{position:relative;width:94px;height:78px}.dlf-folder-stack img{position:absolute;width:65px;height:77px;object-fit:cover;border-radius:6px;box-shadow:0 5px 14px #0006;background:#303035;left:14px;top:0}.dlf-folder-stack img:nth-child(1){transform:rotate(-9deg);left:6px}.dlf-folder-stack img:nth-child(2){transform:rotate(8deg);left:22px}.dlf-folder-stack img:last-child{transform:none;left:14px}',
     '.dlf-masonry{display:grid;grid-template-columns:repeat(var(--lf-columns),minmax(0,1fr));gap:16px;align-items:start}.dlf-masonry-column{min-width:0}.dlf-gallery{columns:5 210px;column-gap:16px}.dlf-card{display:inline-block;width:100%;break-inside:avoid;margin-bottom:16px;background:var(--lf-card);border:1px solid #ffffff04;border-radius:17px;overflow:hidden;position:relative;vertical-align:top;transition:border .15s}.dlf-card:hover{border-color:#ffffff30}.dlf-card.selected{border-color:#9cb0ff}.dlf-cover{display:block;width:100%;padding:0!important;text-align:left;position:relative;min-height:150px}.dlf-image{display:block;width:100%;height:auto;min-height:130px;max-height:430px;object-fit:cover;background:#18181b}.dlf-document-cover{height:238px;display:flex;align-items:center;justify-content:center}.dlf-document-symbol{display:flex;flex-direction:column;align-items:center;gap:8px;font-size:13px;letter-spacing:.5px;font-weight:650}.dlf-kind-pdf{color:#ff5757}.dlf-kind-document,.dlf-kind-note{color:#4b9dff}.dlf-kind-spreadsheet{color:#57c69a}.dlf-kind-presentation{color:#f9ac70}.dlf-kind-file{color:#a4a4b1}',
-    '.dlf-card-caption{padding:12px 14px 13px}.dlf-card-title{font-size:13px;font-weight:500;display:flex;align-items:center;gap:8px;margin-bottom:3px}.dlf-card-title>span{flex:1}.dlf-card-sub{display:flex;justify-content:space-between;gap:6px;font-size:11px;color:var(--lf-muted)}.dlf-card-actions{position:absolute;left:9px;right:9px;top:9px;display:flex;justify-content:space-between;align-items:center;pointer-events:none}.dlf-card-actions>*{pointer-events:auto}.dlf-card-actions .dlf-icon{background:#161619bd;backdrop-filter:blur(8px);width:30px;height:30px;opacity:0;transition:opacity .15s}.dlf-card:hover .dlf-card-actions .dlf-icon,.dlf-card:focus-within .dlf-card-actions .dlf-icon,.dlf-card.selected .dlf-icon,.dlf-card .dlf-icon.is-favorite{opacity:1}.dlf-card .is-favorite{color:#edcd83}.dlf-select{appearance:none;width:18px;height:18px;border:1px solid #ffffff70!important;border-radius:5px;background:#16161988!important;padding:0!important;cursor:pointer;opacity:0}.dlf-card:hover .dlf-select,.dlf-card:focus-within .dlf-select,.dlf-select:checked{opacity:1}.dlf-select:checked{background:#a5b7ff!important;border-color:#a5b7ff!important}.dlf-select:checked:after{content:"✓";display:block;color:#141416;font:13px/16px sans-serif;text-align:center}',
+    '.dlf-filebar{display:flex;align-items:center;gap:9px;padding:13px 16px;border-bottom:1px solid #ffffff05;height:46px;font-size:12px}.dlf-card:not(:has(.dlf-image)):hover .dlf-filebar .dlf-document-symbol{opacity:0}.dlf-card-sub .dlf-icon{height:20px;width:24px}.dlf-card-caption{padding:12px 14px 13px}.dlf-card-title{font-size:13px;font-weight:500;display:flex;align-items:center;gap:8px;margin-bottom:3px}.dlf-card-title>span{flex:1}.dlf-card-sub{display:flex;justify-content:space-between;gap:6px;font-size:11px;color:var(--lf-muted)}.dlf-card-actions{position:absolute;left:9px;right:9px;top:9px;display:flex;justify-content:space-between;align-items:center;pointer-events:none}.dlf-card-actions>*{pointer-events:auto}.dlf-card-actions .dlf-icon{background:#161619bd;backdrop-filter:blur(8px);width:30px;height:30px;opacity:0;transition:opacity .15s}.dlf-card:hover .dlf-card-actions .dlf-icon,.dlf-card:focus-within .dlf-card-actions .dlf-icon,.dlf-card.selected .dlf-icon,.dlf-card .dlf-icon.is-favorite{opacity:1}.dlf-card .is-favorite{color:#edcd83}.dlf-select{appearance:none;width:18px;height:18px;border:1px solid #ffffff70!important;border-radius:5px;background:#16161988!important;padding:0!important;cursor:pointer;opacity:0}.dlf-card:hover .dlf-select,.dlf-card:focus-within .dlf-select,.dlf-select:checked{opacity:1}.dlf-select:checked{background:#a5b7ff!important;border-color:#a5b7ff!important}.dlf-select:checked:after{content:"✓";display:block;color:#141416;font:13px/16px sans-serif;text-align:center}',
     '.dlf-table{width:100%;border-collapse:collapse;table-layout:fixed}.dlf-table th{text-align:left;color:var(--lf-muted);font-size:12px;font-weight:400;padding:12px 10px;border-bottom:1px solid var(--lf-line)}.dlf-table td{padding:11px 10px;border-bottom:1px solid #ffffff08;font-size:13px}.dlf-table tr:hover td{background:#ffffff04}.dlf-table .dlf-select{opacity:1}.dlf-table-title{display:flex;align-items:center;gap:12px;max-width:100%;text-align:left}.dlf-table-thumb{width:40px;height:44px;object-fit:cover;border-radius:5px;flex-shrink:0}.dlf-table .dlf-icon.is-favorite{color:#edcd83}.dlf-table th:first-child{width:38px}.dlf-table th:nth-child(3){width:16%}.dlf-table th:nth-child(4){width:90px}.dlf-table th:nth-child(5){width:95px}.dlf-table th:last-child{width:50px}',
     '.dlf-empty{text-align:center;padding:70px 24px;color:var(--lf-muted);border:1px dashed var(--lf-line);border-radius:18px}.dlf-empty svg{opacity:.45;margin-bottom:12px}.dlf-empty h3{font-size:17px;font-weight:500;color:var(--lf-text);margin:0 0 8px}.dlf-empty p{max-width:420px;margin:0 auto 20px;font-size:13px}.dlf-pager{display:flex;justify-content:center;align-items:center;gap:20px;margin-top:24px}.dlf-error{border:1px solid #e2736c55;background:#e2736c0d;border-radius:10px;color:#ffb1ac;padding:12px 16px;margin:16px 0;white-space:pre-wrap}.dlf-notice{color:#afc9b4;font-size:13px;margin:12px 0}.dlf-batch{background:#202027;border:1px solid #ffffff16;border-radius:12px;padding:9px 14px;margin-bottom:18px;display:flex;gap:12px;align-items:center;flex-wrap:wrap}.dlf-batch strong{margin-right:auto;font-size:13px}.dlf-progress{padding:10px 0;color:var(--lf-muted);font-size:12px}.dlf-progress progress{width:160px;accent-color:#afbfff;margin-right:10px}',
     '.dlf-new-wrap{position:relative}.dlf-menu{position:absolute;right:0;top:calc(100% + 8px);min-width:188px;background:#242428;border:1px solid #ffffff15;border-radius:13px;padding:6px;box-shadow:0 16px 60px #0008;z-index:15}.dlf-menu button{display:flex;align-items:center;gap:10px;width:100%;text-align:left;padding:10px;border-radius:8px;white-space:nowrap}.dlf-menu button:hover{background:#ffffff0c}.dlf-drop{position:fixed;inset:12px;z-index:80;background:#16161eea;border:2px dashed #9cafff;border-radius:24px;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:16px;font-size:24px;pointer-events:none}',
@@ -98,7 +98,7 @@ window.__ModuleLoader__.load({id:"dsh-file-manager",factory:function dshFileMana
       h('div',{ className:'dlf-masonry-column',key:column },items.filter((_,index) => index % columns === column).map(render))));
   }
 
-  function Dialog({ title,onClose,wide=false,children,t }) {
+  function Dialog({ title,onClose,wide=false,children,t,error }) {
     const ref = React.useRef(null);
     React.useEffect(() => {
       if (typeof document === 'undefined') return;
@@ -117,7 +117,7 @@ window.__ModuleLoader__.load({id:"dsh-file-manager",factory:function dshFileMana
     }
     return h('div',{ className:'dlf-backdrop',onMouseDown:event => { if (event.target === event.currentTarget) onClose(); } },
       h('div',{ className:'dlf-dialog' + (wide ? ' wide' : ''),role:'dialog','aria-modal':true,'aria-label':title,ref,onKeyDown:keyDown },
-        h('div',{ className:'dlf-dialog-head' },h('h2',null,title),h('button',{ type:'button',className:'dlf-icon','aria-label':t('close'),onClick:onClose },h(Icon,{ name:'close' }))),children));
+        h('div',{ className:'dlf-dialog-head' },h('h2',null,title),h('button',{ type:'button',className:'dlf-icon','aria-label':t('close'),onClick:onClose },h(Icon,{ name:'close' }))),error ? h('div',{ role:'alert',className:'dlf-error' },error) : null,children));
   }
   function LibraryPage({ api,t }) {
     const [status,setStatus] = React.useState(null), [directory,setDirectory] = React.useState('');
@@ -201,7 +201,7 @@ window.__ModuleLoader__.load({id:"dsh-file-manager",factory:function dshFileMana
             for (let start = 0; start < bytes.length; start += 32768) binary += String.fromCharCode(...bytes.subarray(start,start + 32768));
             await api('upload',{ name:file.name,base64:btoa(binary),folderId:folderId ?? '' });
           }
-          setNotice(t('saved') + ' · ' + files.length); setOffset(0);
+          setNotice(t('saved') + ' · ' + files.length); setOffset(0); setTab('all'); setSearch(''); setQuery('');
         } finally { setProgress(null); }
       });
     }
@@ -220,18 +220,22 @@ window.__ModuleLoader__.load({id:"dsh-file-manager",factory:function dshFileMana
     const folderOptions = [h('option',{ key:'',value:'' },t('unfiled')),...folders.map(folder => h('option',{ key:folder.id,value:folder.id },labelFolder(folder.id)))];
     function kindIcon(item,size=42) {
       const kind = kindOf(item),name = kind === 'image' ? 'image' : kind === 'note' ? 'note' : 'file';
-      return h('span',{ className:'dlf-document-symbol dlf-kind-' + kind },h(Icon,{ name,size }),size > 24 ? h('span',null,kind === 'pdf' ? 'PDF' : kind === 'document' ? 'DOC' : kind === 'spreadsheet' ? 'XLS' : kind === 'presentation' ? 'PPT' : kind === 'note' ? 'TXT' : '') : null);
+      return h('span',{ className:'dlf-document-symbol dlf-kind-' + kind },h(Icon,{ name,size }),size > 32 ? h('span',null,kind === 'pdf' ? 'PDF' : kind === 'document' ? 'DOC' : kind === 'spreadsheet' ? 'XLS' : kind === 'presentation' ? 'PPT' : kind === 'note' ? 'TXT' : '') : null);
     }
     const cards = data.items ?? [];
     function itemCard(item) {
+      const image=kindOf(item)==='image';
       return h('article',{ key:item.id,className:'dlf-card' + (selected.includes(item.id) ? ' selected' : ''),'data-item-id':item.id },
+        !image ? h('div',{ className:'dlf-filebar',title:item.name },kindIcon(item,16),h('span',{ className:'dlf-ellipsis' },item.title || item.name)) : null,
         h('button',{ type:'button',className:'dlf-cover','aria-label':t('preview') + ' ' + item.title,onClick:() => { setPreview(item); setEditOpen(false); } },
-          kindOf(item) === 'image' ? h(Image,{ item,className:'dlf-image',alt:item.title }) : h('span',{ className:'dlf-document-cover' },kindIcon(item))),
+          image ? h(Image,{ item,className:'dlf-image',alt:item.title }) : h('span',{ className:'dlf-document-cover' },kindIcon(item))),
         h('div',{ className:'dlf-card-actions' },
           h('input',{ type:'checkbox',className:'dlf-select',checked:selected.includes(item.id),'aria-label':t('selectItem') + ' ' + item.title,onChange:() => choose(item) }),
           iconButton(item.favorite ? 'unfavorite' : 'favorite','star',{ className:'dlf-icon' + (item.favorite ? ' is-favorite' : ''),'aria-pressed':Boolean(item.favorite),onClick:() => favorite(item) })),
-        h('div',{ className:'dlf-card-caption' },h('div',{ className:'dlf-card-title',title:item.name },h('span',{ className:'dlf-ellipsis' },item.title || item.name),iconButton('edit','dots',{ onClick:() => edit(item) })),
-          h('div',{ className:'dlf-card-sub' },h('span',{ className:'dlf-ellipsis' },item.folderId ? labelFolder(item.folderId) : t(kindOf(item))),h('span',null,bytesLabel(item.bytes)))));
+        h('div',{ className:'dlf-card-caption' },
+          image ? h('div',{ className:'dlf-card-title',title:item.name },h('span',{ className:'dlf-ellipsis' },item.title || item.name),iconButton('edit','dots',{ onClick:() => edit(item) })) : null,
+          h('div',{ className:'dlf-card-sub' },h('span',{ className:'dlf-ellipsis' },item.folderId ? labelFolder(item.folderId) : t(kindOf(item))),h('span',null,bytesLabel(item.bytes)),
+            !image ? iconButton('edit','dots',{ onClick:() => edit(item) }) : null)));
     }
     const noItemsTitle = search ? 'noMatches' : tab === 'favorites' ? 'emptyFavorites' : tab === 'folders' ? 'emptyFolders' : 'empty';
     const noItemsHint = search ? 'noMatchesHint' : tab === 'favorites' ? 'emptyFavoritesHint' : tab === 'folders' ? 'emptyFoldersHint' : 'emptyHint';
@@ -280,7 +284,7 @@ window.__ModuleLoader__.load({id:"dsh-file-manager",factory:function dshFileMana
             h('div',{ className:'dlf-folder-cover' },folder.covers?.length ? h('div',{ className:'dlf-folder-stack' },folder.covers.map(item => h(Image,{ key:item.id,item,alt:'' }))) : h(Icon,{ name:'folder',size:45 })))))) : null,
         tab !== 'folders' ? h(React.Fragment,null,
           h('div',{ className:'dlf-section' },h('h2',null,t('items'),h('span',{ className:'dlf-count',style:{ marginLeft:10 } },data.total)),
-            h('div',{ className:'dlf-row' },h('select',{ className:'dlf-sort',value:sort,'aria-label':t('recent'),onChange:event => { setSort(event.target.value); setOffset(0); } },(tab === 'recommended' ? ['recommended','recent','oldest','name','size'] : ['recent','oldest','name','size']).map(value => h('option',{ key:value,value },t(value === 'recommended' ? 'recommendedSort' : value)))),
+            h('div',{ className:'dlf-row' },h('select',{ className:'dlf-sort',value:sort,'aria-label':t('sort'),onChange:event => { setSort(event.target.value); setOffset(0); } },(tab === 'recommended' ? ['recommended','recent','oldest','name','size'] : ['recent','oldest','name','size']).map(value => h('option',{ key:value,value },t(value === 'recommended' ? 'recommendedSort' : value)))),
               iconButton('refresh','refresh',{ onClick:() => run(async () => { const report=await api('refresh',{}); if (report.errorCount || report.capped) setNotice(JSON.stringify(report)); }) }))),
           view === 'grid' ? h(Masonry,{ items:cards,render:itemCard }) :
             h('table',{ className:'dlf-table' },h('thead',null,h('tr',null,['','name','folder','size','date',''].map((value,index) => h('th',{ key:index },value ? t(value) : '')))),
@@ -294,22 +298,22 @@ window.__ModuleLoader__.load({id:"dsh-file-manager",factory:function dshFileMana
         tab === 'folders' && !childrenFolders.length ? h('div',{ className:'dlf-empty' },h(Icon,{ name:'folder',size:46 }),h('h3',null,t(noItemsTitle)),h('p',null,t(noItemsHint)),button('newFolder',{ className:'dlf-primary',onClick:() => { setFolderEdit({ create:true }); setFolderName(''); } })) : null) : null,
       loading ? h('div',{ className:'dlf-gallery','aria-busy':true },[0,1,2,3].map(value => h('div',{ key:value,className:'dlf-loading' }))) : null,
       h('p',{ className:'dlf-muted',style:{ marginTop:32,fontSize:10,opacity:.5 } },'DSH Library · 0.2.0')),
-      settings ? h(Dialog,{ title:t('settings'),onClose:() => setSettings(false),t },directoryForm) : null,
-      noteOpen ? h(Dialog,{ title:t('newNote'),onClose:() => setNoteOpen(false),t },
-        h('form',{ onSubmit:event => { event.preventDefault(); void run(async () => { await api('note',{ name:'note.md',title:noteTitle || 'note.md',content:noteContent,tags:tags(noteTags),folderId:folderId ?? '' }); setNoteOpen(false); setNoteTitle(''); setNoteContent(''); setNoteTags(''); setNotice(t('saved')); }); } },
+      settings ? h(Dialog,{ error,title:t('settings'),onClose:() => setSettings(false),t },directoryForm) : null,
+      noteOpen ? h(Dialog,{ error,title:t('newNote'),onClose:() => setNoteOpen(false),t },
+        h('form',{ onSubmit:event => { event.preventDefault(); void run(async () => { await api('note',{ name:'note.md',title:noteTitle || 'note.md',content:noteContent,tags:tags(noteTags),folderId:folderId ?? '' }); setNoteOpen(false); setNoteTitle(''); setNoteContent(''); setNoteTags(''); setNotice(t('saved')); setTab('all'); setSearch(''); setQuery(''); setOffset(0); }); } },
           h('label',{ htmlFor:'dlf-note-title' },t('title')),h('input',{ id:'dlf-note-title',value:noteTitle,onChange:event => setNoteTitle(event.target.value) }),
           h('label',{ htmlFor:'dlf-note-content' },t('content')),h('textarea',{ id:'dlf-note-content',value:noteContent,onChange:event => setNoteContent(event.target.value),style:{ minHeight:220 } }),
           h('label',{ htmlFor:'dlf-note-tags' },t('tags')),h('input',{ id:'dlf-note-tags',value:noteTags,placeholder:t('tagsHint'),onChange:event => setNoteTags(event.target.value) }),
           h('div',{ className:'dlf-dialog-actions' },button('cancel',{ onClick:() => setNoteOpen(false) }),button('saveNote',{ className:'dlf-primary',type:'submit' })))) : null,
-      folderEdit ? h(Dialog,{ title:t(folderEdit.create ? 'newFolder' : 'editFolder'),onClose:() => setFolderEdit(null),t },
+      folderEdit ? h(Dialog,{ error,title:t(folderEdit.create ? 'newFolder' : 'editFolder'),onClose:() => setFolderEdit(null),t },
         h('form',{ onSubmit:event => { event.preventDefault(); void run(async () => { await api(folderEdit.create ? 'createFolder' : 'renameFolder',folderEdit.create ? { name:folderName.trim(),parentId:folderId ?? '' } : { id:folderEdit.id,name:folderName.trim() }); setFolderEdit(null); }); } },
           h('label',{ htmlFor:'dlf-folder-name' },t('folderName')),h('input',{ id:'dlf-folder-name',value:folderName,required:true,onChange:event => setFolderName(event.target.value) }),
           !folderEdit.create ? h('p',{ className:'dlf-muted' },t('removeFolderHint')) : null,
           h('div',{ className:'dlf-dialog-actions' },!folderEdit.create ? button('removeFolder',{ className:'dlf-danger',onClick:() => run(async () => { const result=await api('removeFolder',{ id:folderEdit.id }); setFolderEdit(null); openFolder(result.parentId || undefined); }) }) : null,
             button('cancel',{ onClick:() => setFolderEdit(null) }),button('save',{ type:'submit',className:'dlf-primary',disabled:busy || !folderName.trim() })))) : null,
-      moveOpen ? h(Dialog,{ title:t('move'),onClose:() => setMoveOpen(false),t },h('label',{ htmlFor:'dlf-destination' },t('chooseFolder')),h('select',{ id:'dlf-destination',value:destination,onChange:event => setDestination(event.target.value) },folderOptions),
+      moveOpen ? h(Dialog,{ error,title:t('move'),onClose:() => setMoveOpen(false),t },h('label',{ htmlFor:'dlf-destination' },t('chooseFolder')),h('select',{ id:'dlf-destination',value:destination,onChange:event => setDestination(event.target.value) },folderOptions),
         h('div',{ className:'dlf-dialog-actions' },button('cancel',{ onClick:() => setMoveOpen(false) }),button('save',{ className:'dlf-primary',onClick:() => run(async () => { for (const id of selected) await api('update',{ id,folderId:destination }); setSelected([]); setMoveOpen(false); }) }))) : null,
-      preview ? h(Dialog,{ title:preview.title || preview.name,wide:true,onClose:() => { setPreview(null); setEditOpen(false); },t },
+      preview ? h(Dialog,{ error,title:preview.title || preview.name,wide:true,onClose:() => { setPreview(null); setEditOpen(false); },t },
         h('div',{ className:'dlf-preview-grid' },h('div',null,
           kindOf(preview) === 'pdf' ? h('div',{ className:'dlf-row',style:{ marginBottom:12 } },button('preview',{ className:'dlf-secondary','aria-pressed':!textMode,onClick:() => setTextMode(false) }),button('textPreview',{ className:'dlf-secondary','aria-pressed':textMode,onClick:() => setTextMode(true) })) : null,
           h('div',{ className:'dlf-preview-media' },kindOf(preview) === 'image' ? h(Image,{ item:preview,thumbnail:false,alt:preview.title }) :
