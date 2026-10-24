@@ -100,11 +100,14 @@ test('authenticated assets return real thumbnails and reject a non-owner peer',a
   // A generated PNG avoids relying on malformed sample-image CRCs.
   const { default:sharp }=await import('sharp');
   const bytes=await sharp({ create:{ width:960,height:1440,channels:3,background:'#6087a5' } }).png().toBuffer();
-  const saved=await request('upload',{ name:'image.png',base64:bytes.toString('base64') });
+  const saved=await request('upload',{ name:"reader's image.png",base64:bytes.toString('base64') });
   assert.equal(saved.ok,true);
   const handler=ctx.get('connection').createSharedFetchHandler('/api');
   const url='http://localhost/api/dsh-file-manager/asset?id='+saved.value.id+'&thumbnail=1&v='+saved.value.sha256;
-  const response=await handler.fetch(new Request(url),{ principal:{ kind:'owner' } });
+  const responses=await Promise.all(Array.from({ length:6 },() => handler.fetch(new Request(url),{ principal:{ kind:'owner' } })));
+  for (const value of responses) assert.equal(value.status,200);
+  const response=responses[0];
+  assert.match(response.headers.get('content-disposition'),/reader%27s/);
   assert.equal(response.status,200,await response.clone().text());
   assert.equal(response.headers.get('content-type'),'image/webp');
   const metadata=await sharp(Buffer.from(await response.arrayBuffer())).metadata();

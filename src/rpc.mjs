@@ -85,6 +85,7 @@ export function installLibraryRpc(ctx,manager) {
             const { default:sharp } = await import('sharp');
             bytes = await sharp(bytes,{ limitInputPixels:64000000,animated:false }).rotate().resize({ width:480,height:640,fit:'inside',withoutEnlargement:true }).webp({ quality:76 }).toBuffer();
             if (bytes.length <= 4 * 1024 * 1024) {
+              const previous=cache.get(key); if (previous) cachedBytes -= previous.length;
               cache.set(key,bytes); cachedBytes += bytes.length;
               while (cache.size > 128 || cachedBytes > 32 * 1024 * 1024) {
                 const oldest = cache.keys().next().value; cachedBytes -= cache.get(oldest).length; cache.delete(oldest);
@@ -102,8 +103,9 @@ export function installLibraryRpc(ctx,manager) {
           'cache-control':url.searchParams.get('v') === asset.sha256 ? 'private, max-age=3600' : 'private, no-store',
           'cross-origin-resource-policy':'same-origin',
           'content-security-policy':"default-src 'none'; sandbox",
-          'content-disposition':(download ? 'attachment' : 'inline') + "; filename*=UTF-8''" + encodeURIComponent(asset.name),
+          'content-disposition':(download ? 'attachment' : 'inline') + "; filename*=UTF-8''" + encodeURIComponent(asset.name).replace(/['()]/g,character => '%' + character.charCodeAt(0).toString(16).toUpperCase()),
         };
+        request.signal.throwIfAborted();
         return new Response(bytes,{ headers });
       } catch (error) {
         const status = ['not-found','ENOENT'].includes(error.code) ? 404 : error.code === 'file-too-large' ? 413 : error.code === 'unsupported-preview' ? 415 : error.code === 'unsafe-path' ? 403 : 400;
