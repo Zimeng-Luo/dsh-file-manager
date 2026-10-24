@@ -26,6 +26,20 @@ dsh plugin --profile web add github:Zimeng-Luo/dsh-file-manager#main
 
 更新时先 remove dsh-file-manager 再 add 上述来源，之后重启。仅重启不会下载新代码。目录内资料与独立的设置文件不随包更新删除。
 
+## 0.2.0：资料库画廊
+
+页面按资料库画廊重新设计：推荐 / 收藏 / 文件夹 / 图像 / 全部分类，顶部搜索、新建、排序与设置；文件夹封面、图片瀑布流和列表视图。拖放或选择多个文件可以上传，显示上传进度；图片使用真实的 WebP 缩略图，点击可查看原图，PDF 可切换原件与提取正文，Word 等文件展示提取文本。
+
+可创建嵌套文件夹、编辑资料标题/备注/标签、收藏、批量移动和批量收藏。目录设置收进设置弹窗，已配置时不再占据主页。视图选择保存在浏览器本地。推荐按收藏与最近添加排序，不需要配置外部模型服务。
+
+文件夹是资料库中的整理分类，不改动原始来源文件，也不强制移动已入库文件的物理路径。旧版索引原位添加整理信息，已有 id、原件路径、SHA-256 和正文保留。移除文件夹时，其中资料和子文件夹移到上一级，不删除原件。
+
+新增模型工具 library_folders、library_update；library_store 可指定 folderId / favorite，library_list / library_search 支持分类与收藏过滤。因此页面、其他会话和 dsh-im bot 读取同一份整理结果。
+
+预览接口只接受资料 id，沿用 Harness 的认证与 owner 校验；不接收任意主机路径。缩略图最长 640 像素，缓存最多 128 张 / 32 MiB。SVG、HTML 等内容只作为原件下载，不作为页面内容运行。超出导入上限的手动文件可登记元数据，但无法通过受限预览接口读取。
+
+[桌面预览（演示资料）](https://github.com/Zimeng-Luo/dsh-file-manager/blob/library-preview/docs/gallery-desktop.png) · [手机预览（演示资料）](https://github.com/Zimeng-Luo/dsh-file-manager/blob/library-preview/docs/gallery-mobile.png)
+
 ## 0.1.3：修复模型保存图片时的空参数冲突
 
 复制文件时，模型可能同时传 sourcePath 和 content: ""，旧版把空字符串也判为正文，导致反复返回 Supply exactly one of sourcePath or content。现在有效路径配空正文、空白正文或 null 会直接复制原文件；保存笔记时忽略空路径。只有文件路径与非空正文同时出现才拒绝。
@@ -69,6 +83,8 @@ dsh plugin --profile desktop add github:Zimeng-Luo/dsh-file-manager#main
 | library_list | 分页列出资料 |
 | library_search | 搜索名称、标题、描述、标签和已解析正文 |
 | library_read | 根据 ID 分段读取正文 |
+| library_folders | 列出、创建、重命名或移除资料文件夹 |
+| library_update | 编辑标题/备注/标签、移动文件夹和收藏 |
 | library_refresh | 登记手动放入目录的文件，更新外部变化 |
 
 保存原文件使用 sourcePath，此时 content 可以省略或为空；保存生成的文字使用 content，此时 sourcePath 可以省略或为空。两个字段都提供非空内容时会拒绝保存。来源文件通过会话的 ctx.fs 读取， relative path 使用该会话当前工作目录。保存成功后，原件已经复制到资料库；来源保持原位置。
@@ -130,7 +146,7 @@ F:\Library\
 
 切换目录会打开该目录独立的资料索引，原目录仍保留。目录选择保存在 stateDir/settings.json。要恢复配置文件的默认目录，先备份并移除这个设置文件。
 
-这是一个明确授权目标目录的共享存储能力，不会扩大项目的通用文件或 shell 权限；本版不提供任意磁盘管理或删除工具。
+这是一个明确授权目标目录的共享存储能力，不会扩大项目的通用文件或 shell 权限；本版提供资料库整理能力，不提供任意磁盘管理或删除原件工具。
 
 ## 微信 / QQ · dsh-im
 

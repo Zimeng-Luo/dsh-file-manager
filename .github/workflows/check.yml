@@ -25,3 +25,27 @@ jobs:
         with:
           name: dsh-file-manager-${{ matrix.os }}
           path: dsh-file-manager-*.tgz
+  gallery:
+    needs: check
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --ignore-scripts
+      - run: npx playwright install --with-deps chromium
+      - run: node scripts/gallery-browser.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: library-gallery-preview
+          path: .artifacts/
+      - run: node scripts/publish-preview.mjs
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
