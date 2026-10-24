@@ -1,3 +1,4 @@
+import { fileURLToPath } from 'node:url';
 import { LibraryError,validateMetadata } from './library.mjs';
 
 const output = {
@@ -8,6 +9,32 @@ const schema = (properties = {},required = []) => ({ type: 'object',additionalPr
 const text = description => ({ type: 'string',description });
 const limit = maximum => ({ type: 'integer',minimum: 1,maximum });
 
+
+/** Model providers may materialize unused optional fields as empty strings or null. */
+function storeInput(args) {
+  if (!args || typeof args !== 'object' || Array.isArray(args)) {
+    throw new LibraryError('invalid-store','library_store expects an object with sourcePath or content.');
+  }
+  const input = { ...args };
+  for (const field of ['sourcePath','content','name','title','description','tags']) {
+    if (input[field] === null) delete input[field];
+  }
+  for (const field of ['sourcePath','content','name']) {
+    if (input[field] !== undefined && typeof input[field] !== 'string') {
+      throw new LibraryError('invalid-store-field',field + ' must be a string or omitted.');
+    }
+  }
+  if (typeof input.name === 'string' && !input.name.trim()) delete input.name;
+  const hasPath = typeof input.sourcePath === 'string' && Boolean(input.sourcePath.trim());
+  const hasText = typeof input.content === 'string' && Boolean(input.content.trim());
+  if (hasPath && hasText) {
+    throw new LibraryError('invalid-store','Supply exactly one nonempty source: sourcePath for a file OR content for a note. To copy a file, omit content or set content to "". Do not repeat the same conflicting call.');
+  }
+  if (hasPath) return { input,hasPath:true };
+  if (typeof input.content === 'string') return { input,hasPath:false };
+  throw new LibraryError('missing-store-source','Provide an existing file in sourcePath, or note text in content. Example file call: {"sourcePath":"path/to/image.png"}. Do not invent a file path.');
+}
+
 /** Native tools are shared across allowed sessions, including dsh-im sessions. */
 export function createLibraryTools(manager,fs,workingDirectory,getServices) {
   return [
@@ -17,31 +44,34 @@ export function createLibraryTools(manager,fs,workingDirectory,getServices) {
     },
     {
       name: 'library_store',
-      description: 'Copy an existing file into the shared library, or save a text note. Supply exactly one of sourcePath/content. Use for requests to save to the library; other conversations can then search it. A path belongs in sourcePath, not content.',
+      description: 'Copy an existing file into the shared library, or save a text note. Use a nonempty sourcePath for files (omit content or leave it empty); use content for notes (leave sourcePath empty). Never send both a file path and real note text. Use for requests to save to the library; other conversations can then search it. A path belongs in sourcePath, not content.',
       parameters: schema({
-        sourcePath: text('File in the current filesystem provider. Relative paths use this Session working directory.'),
-        content: text('Full UTF-8 note content; omit when copying a file.'),
+        sourcePath: text('Existing file in the current filesystem provider, including images. Relative paths use this Session working directory. Local file:// URLs are accepted. Leave blank for text notes.'),
+        content: text('UTF-8 note text. Omit or leave blank when copying a file; do not put an image description here instead of copying its original file.'),
         name: text('Filename without directories. Optional for source files; default note.md for text.'),
         title: text('Display title.'),description: text('Description to aid future searches.'),
         tags: { type: 'array',maxItems: 30,items: { type: 'string',maxLength: 100 } },
       }),
       output,
-      async execute(args,exec) {
-        const hasPath = typeof args.sourcePath === 'string';
-        const hasContent = typeof args.content === 'string';
-        if (hasPath === hasContent) throw new LibraryError('invalid-store', 'Supply exactly one of sourcePath or content.');
+      async execute(rawArgs,exec) {
+        const { input:args,hasPath } = storeInput(rawArgs);
+        exec.signal?.throwIfAborted();
         validateMetadata(args);
         const status = await manager.status();
         if (!status.configured) throw new LibraryError('not-configured', 'Configure the library directory in the Library page first.');
         let bytes,name,source;
         if (hasPath) {
-          if (!args.sourcePath.trim()) throw new LibraryError('invalid-source', 'sourcePath cannot be empty.');
+          let sourcePath = args.sourcePath;
+          if (/^file:\/\//i.test(sourcePath)) {
+            try { sourcePath = fileURLToPath(sourcePath); }
+            catch { throw new LibraryError('invalid-source','sourcePath contains an invalid local file URL. Supply the original filesystem path.'); }
+          }
           const services = getServices ? getServices(exec) : { fs,workingDirectory };
           if (!services.fs) throw new LibraryError('filesystem-unavailable','This agent has no filesystem provider. Upload the file in the Library page, or enable a filesystem provider for this agent.');
           const cwd = exec.agent ? services.workingDirectory?.get(exec.agent.session) : undefined;
-          const target = await services.fs.resolve(args.sourcePath, { cwd,signal: exec.signal });
+          const target = await services.fs.resolve(sourcePath, { cwd,signal: exec.signal });
           bytes = await services.fs.readBytes(target, exec.signal, status.maxFileBytes);
-          name = args.name ?? args.sourcePath.replace(/\\/g,'/').split('/').pop();
+          name = args.name ?? sourcePath.replace(/\\/g,'/').split('/').pop();
           source = args.sourcePath;
         } else {
           if (Buffer.byteLength(args.content,'utf8') > status.maxFileBytes) throw new LibraryError('file-too-large', 'Note exceeds maxFileBytes.');

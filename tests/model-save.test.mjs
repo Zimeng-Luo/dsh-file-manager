@@ -49,6 +49,8 @@ test('native model call copies an image with content empty and another session f
   });
   assert.equal(saved.name,path.basename(source));
   assert.equal(saved.sha256,sha256(png));
+  assert.equal(saved.title,'原图保存回归');
+  assert.deepEqual(saved.tags,['图片','pixelFixture']);
   assert.deepEqual(await readFile(saved.path),png);
   assert.deepEqual(await readFile(source),png);
   assert.equal(saved.indexStatus,'metadata-only');

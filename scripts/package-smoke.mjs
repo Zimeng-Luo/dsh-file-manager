@@ -9,6 +9,7 @@ import { boot } from '@deepseek-ai/dsh-app-boot';
 import { HostConnectionService } from '@deepseek-ai/dsh-client-connection';
 import Tools from '@deepseek-ai/dsh-tools';
 import SystemPrompt from '@deepseek-ai/dsh-system-prompt';
+import LocalFileSystem from '@deepseek-ai/dsh-fs-local';
 
 const archive=(await readdir(process.cwd())).find(name => /^dsh-file-manager-.*\.tgz$/.test(name));
 assert.ok(archive,'Run npm pack before the installed-package smoke.');
@@ -44,6 +45,7 @@ try {
   ctx=await boot('library-installed-smoke',configuration,[],async host => {
     await host.plugin(SystemPrompt,{});
     await host.plugin(Tools,{});
+    await host.plugin(LocalFileSystem,{ cwd:temporary });
     await host.plugin({ name:'installed-smoke-connection',apply(scope) {
       new HostConnectionService(scope,[],{ isAuthenticated:() => true });
     } });
@@ -69,7 +71,25 @@ try {
   const prompt=await ctx.get('systemPrompt').assemble();
   assert.equal(prompt.tools.filter(tool => tool.name.startsWith('library_')).length,6);
   assert.equal(prompt.sections.some(section => section.name === 'library:usage'),true);
-  console.log('Packed production plugin boots through Harness with its bundle row; status, configure, save, list, search and six model tools pass.');
+  const imageBytes=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/l9sAAAAASUVORK5CYII=','base64');
+  const imageSource=path.join(temporary,'原始图片.png');
+  await writeFile(imageSource,imageBytes);
+  const stored=await ctx.get('tools').execute({
+    callId:'packed-image-save',name:'library_store',
+    arguments:{ sourcePath:imageSource,content:'',name:'',title:'Packed image',tags:['packedImage'] },
+    signal:new AbortController().signal,
+  });
+  assert.equal(stored.isError,false,stored.error?.message);
+  assert.deepEqual(await readFile(stored.value.path),imageBytes);
+  assert.deepEqual(await readFile(imageSource),imageBytes);
+  assert.equal(stored.value.name,'原始图片.png');
+  assert.equal(stored.value.title,'Packed image');
+  assert.deepEqual(stored.value.tags,['packedImage']);
+  assert.equal(stored.value.indexStatus,'metadata-only');
+  const imageHits=await rpc('search',{ query:'packedImage' });
+  assert.equal(imageHits.matches[0].id,stored.value.id);
+  assert.equal((await rpc('list')).total,2);
+  console.log('Packed plugin boots through Harness; a real model tool call saves the original PNG with empty content, and RPC finds the stored image and metadata.');
 } finally {
   await ctx?.fiber.dispose();
   if (previousHome === undefined) delete process.env.DSH_HOME;

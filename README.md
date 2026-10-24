@@ -26,6 +26,14 @@ dsh plugin --profile web add github:Zimeng-Luo/dsh-file-manager#main
 
 更新时先 remove dsh-file-manager 再 add 上述来源，之后重启。仅重启不会下载新代码。目录内资料与独立的设置文件不随包更新删除。
 
+## 0.1.3：修复模型保存图片时的空参数冲突
+
+复制文件时，模型可能同时传 sourcePath 和 content: ""，旧版把空字符串也判为正文，导致反复返回 Supply exactly one of sourcePath or content。现在有效路径配空正文、空白正文或 null 会直接复制原文件；保存笔记时忽略空路径。只有文件路径与非空正文同时出现才拒绝。
+
+空文件名使用原文件名，未使用的 null 可选字段按省略处理；本地 file:// 路径会转换为文件系统路径。保存图片保留原始字节、标题与标签，metadata-only 表示可以按名称或标签搜索，不能据此声称已识别图片正文。Skill 同时要求纠正参数后再调用，停止重复相同的失败调用。
+
+回归测试通过真实模型工具执行流程保存 PNG、校验 SHA-256 与原始字节、跨会话查找，并检查打包安装后的相同操作。
+
 ## 0.1.2：修复默认安装时后端未加载
 
 默认 bundle 行没有 config 时，Cordis 会先拿 undefined 校验配置；原先的 Zod 对象要求对象输入，导致 apply 根本没有执行，而浏览器页面仍能出现，最终请求返回 HTTP 404。配置 schema 现在为缺省输入补齐默认值，bundle 行也显式声明 config: {}。
@@ -63,7 +71,7 @@ dsh plugin --profile desktop add github:Zimeng-Luo/dsh-file-manager#main
 | library_read | 根据 ID 分段读取正文 |
 | library_refresh | 登记手动放入目录的文件，更新外部变化 |
 
-保存原文件使用 sourcePath；保存生成的文字使用 content，两者只能选一个。来源文件通过会话的 ctx.fs 读取， relative path 使用该会话当前工作目录。保存成功后，原件已经复制到资料库；来源保持原位置。
+保存原文件使用 sourcePath，此时 content 可以省略或为空；保存生成的文字使用 content，此时 sourcePath 可以省略或为空。两个字段都提供非空内容时会拒绝保存。来源文件通过会话的 ctx.fs 读取， relative path 使用该会话当前工作目录。保存成功后，原件已经复制到资料库；来源保持原位置。
 
 例如直接调用工具：
 
