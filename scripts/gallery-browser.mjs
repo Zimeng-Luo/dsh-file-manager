@@ -90,6 +90,9 @@ try {
   await expect(page.locator('#dlf-directory')).toHaveCount(0);
   const firstThumbnail=page.locator('.dlf-folder-stack img').first();
   await expect.poll(() => firstThumbnail.evaluate(img => img.naturalWidth)).toBeGreaterThan(0);
+  await page.locator('.dlf-root img').evaluateAll(images => images.forEach(image => { image.loading='eager'; }));
+  await expect(page.locator('.dlf-card img')).toHaveCount(8);
+  await expect.poll(() => page.locator('.dlf-root img').evaluateAll(images => images.every(image => image.complete && image.naturalWidth>0)),{ timeout:15000 }).toBe(true);
   await page.screenshot({ path:path.join(output,'gallery-desktop.png'),fullPage:true });
   await page.getByRole('button',{ name:'预览 配置灵感.png',exact:true }).click();
   let dialog=page.getByRole('dialog');
@@ -153,6 +156,9 @@ try {
   await page.reload();
   await expect(page.getByRole('button',{ name:'网格视图',exact:true })).toHaveAttribute('aria-pressed','true');
   await expect(page.locator('.dlf-card')).toHaveCount(17);
+  await page.locator('.dlf-root img').evaluateAll(images => images.forEach(image => { image.loading='eager'; }));
+  await expect(page.locator('.dlf-card img')).toHaveCount(10);
+  await expect.poll(() => page.locator('.dlf-root img').evaluateAll(images => images.every(image => image.complete && image.naturalWidth>0)),{ timeout:15000 }).toBe(true);
   await page.screenshot({ path:path.join(output,'gallery-mobile.png'),fullPage:true });
   const overflow=await page.locator('.dlf-root').evaluate(element => element.scrollWidth>element.clientWidth+1);
   assert.equal(overflow,false,'mobile gallery must fit the viewport');

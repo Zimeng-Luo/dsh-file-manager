@@ -2,7 +2,7 @@
 
 DeepSeek Harness 原生插件。在左侧导航的「插件 / 自动化任务 / 上下文洞察」同级区域新增「资料库」，点击后在主区域打开独立页面。
 
-支持配置资料目录、上传文件、创建笔记、列表与预览、下载原件，以及通过模型工具把资料存入共享库并在其他会话中检索。资料库独立于工作区，代码项目不需要搬到资料库目录。
+支持图片瀑布流与原图预览、文件夹、收藏、拖放与多文件上传、搜索筛选、列表视图及批量整理。模型可以存入、查找和整理资料，其他会话与 dsh-im bot 共用同一资料库。资料库独立于工作区，代码项目不需要搬到资料库目录。
 
 ## 安装
 
@@ -150,7 +150,7 @@ F:\Library\
 
 ## 微信 / QQ · dsh-im
 
-将插件安装到机器人实际连接的 Harness 实例和 profile。资料库工具必须在机器人的 Agent Preset 中可见；若预设有工具白名单，加入 library_*。
+将插件安装到机器人实际连接的 Harness 实例和 profile。资料库工具必须在机器人的 Agent Preset 中可见；若预设有工具白名单，加入八个实际工具名：library_status、library_store、library_list、library_search、library_read、library_refresh、library_folders、library_update；不要把 library_* 当成一个工具名填写。
 
 当你要求保存收到的附件时，模型可将 dsh-im 提供的附件路径传给 library_store，复制成功的长期原件不受聊天附件保留期影响。共享库不绑定原会话，其他会话可继续检索。
 
