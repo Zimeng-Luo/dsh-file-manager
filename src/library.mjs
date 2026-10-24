@@ -13,6 +13,16 @@ export class LibraryError extends Error {
   constructor(code, message) { super(message); this.code = code; }
 }
 function fail(code, message) { throw new LibraryError(code, message); }
+export function itemKind(name,source) {
+  const extension = path.extname(name).toLowerCase();
+  if (['.png','.jpg','.jpeg','.gif','.webp','.avif','.bmp','.tif','.tiff'].includes(extension)) return 'image';
+  if (source === 'note') return 'note';
+  if (extension === '.pdf') return 'pdf';
+  if (['.doc','.docx','.odt','.rtf'].includes(extension)) return 'document';
+  if (['.xls','.xlsx','.csv','.ods'].includes(extension)) return 'spreadsheet';
+  if (['.ppt','.pptx','.odp'].includes(extension)) return 'presentation';
+  return 'file';
+}
 const digest = bytes => createHash('sha256').update(bytes).digest('hex');
 function inside(root, target) {
   const relative = path.relative(root, target);
@@ -49,6 +59,7 @@ function publicItem(row, root) {
     relativePath: row.relative_path, source: row.source, bytes: row.size, sha256: row.sha256,
     createdAt: row.created_at, updatedAt: row.updated_at, indexStatus: row.status,
     indexError: row.error, textTruncated: Boolean(row.truncated),
+    kind: itemKind(row.name,row.source),folderId: row.folder_id ?? '',favorite: Boolean(row.favorite),
   };
 }
 
@@ -91,6 +102,10 @@ export class Library {
         'CREATE VIRTUAL TABLE IF NOT EXISTS chunks USING fts5(item_id UNINDEXED,start UNINDEXED,end UNINDEXED,meta,body);' +
         'PRAGMA user_version=1;'
       );
+      // Additive tables preserve the original v1 item schema and copied file paths.
+      db.exec("CREATE TABLE IF NOT EXISTS library_folders (id TEXT PRIMARY KEY,name TEXT NOT NULL,parent_id TEXT NOT NULL DEFAULT '',created_at TEXT NOT NULL,UNIQUE(parent_id,name COLLATE NOCASE));" +
+        "CREATE TABLE IF NOT EXISTS library_item_meta (item_id TEXT PRIMARY KEY,folder_id TEXT NOT NULL DEFAULT '',favorite INTEGER NOT NULL DEFAULT 0,modified_at TEXT NOT NULL);" +
+        "CREATE INDEX IF NOT EXISTS library_meta_folder ON library_item_meta(folder_id);");
       return new Library(root, db, config);
     } catch (error) { db.close(); throw error; }
   }
@@ -106,6 +121,16 @@ export class Library {
     this.#closed = true;
     await this.#queue;
     this.db.close();
+  }
+
+  #public(row) {
+    const meta = this.db.prepare('SELECT folder_id,favorite FROM library_item_meta WHERE item_id=?').get(row.id);
+    return publicItem({ ...row,...meta },this.root);
+  }
+  #folder(id) {
+    if (typeof id !== 'string') fail('invalid-folder','Use a folder id, or an empty string for unfiled items.');
+    if (id && !this.db.prepare('SELECT id FROM library_folders WHERE id=?').get(id)) fail('folder-not-found','Library folder not found.');
+    return id;
   }
 
   async #target(relative) {
@@ -191,10 +216,12 @@ export class Library {
     return row;
   }
 
-  async store({ bytes, name, title, description, tags, source = 'upload' }) {
+  async store({ bytes, name, title, description, tags, folderId = '',favorite = false, source = 'upload' }) {
     safeName(name); validateMetadata({ title, description, tags });
     if (!(bytes instanceof Uint8Array) || bytes.byteLength > this.options.maxFileBytes) fail('file-too-large', 'File exceeds maxFileBytes.');
     return this.#run(async () => {
+      this.#folder(folderId);
+      if (typeof favorite !== 'boolean') fail('invalid-favorite','favorite must be a boolean.');
       const id = randomUUID(), parent = path.join(this.root, 'files');
       try { if ((await lstat(parent)).isSymbolicLink()) fail('unsafe-path', 'Files directory cannot be a link.'); }
       catch (error) { if (error.code !== 'ENOENT') throw error; }
@@ -207,7 +234,9 @@ export class Library {
       try { await handle.writeFile(bytes); await handle.sync(); }
       finally { await handle.close(); }
       // A database failure retains the copied original; a later refresh can recover it.
-      return publicItem(await this.#index(relative, { id,title,description,tags,source }), this.root);
+      const row = await this.#index(relative, { id,title,description,tags,source });
+      this.db.prepare('INSERT INTO library_item_meta VALUES (?,?,?,?)').run(id,folderId,Number(favorite),new Date().toISOString());
+      return this.#public(row);
     });
   }
 
@@ -247,6 +276,7 @@ export class Library {
             try {
               this.db.prepare('DELETE FROM chunks WHERE item_id=?').run(row.id);
               this.db.prepare('DELETE FROM items WHERE id=?').run(row.id);
+              this.db.prepare('DELETE FROM library_item_meta WHERE item_id=?').run(row.id);
               this.db.exec('COMMIT'); report.removed++;
             } catch (error) { this.db.exec('ROLLBACK'); throw error; }
           } else recordError(row.relative_path, error);
@@ -263,7 +293,7 @@ export class Library {
     return this.#run(() => {
       const total = this.db.prepare('SELECT count(*) AS count FROM items').get().count;
       const rows = this.db.prepare('SELECT * FROM items ORDER BY created_at DESC,id LIMIT ? OFFSET ?').all(limit, offset);
-      return { items: rows.map(row => publicItem(row, this.root)),total,nextOffset: offset + rows.length < total ? offset + rows.length : null };
+      return { items: rows.map(row => this.#public(row)),total,nextOffset: offset + rows.length < total ? offset + rows.length : null };
     });
   }
 
@@ -289,7 +319,7 @@ export class Library {
         if (row.mtime !== String(stat.mtimeNs) || row.size !== Number(stat.size)) {
           await this.#index(row.relative_path, {}, row); staleCandidates++; continue;
         }
-        matches.push({ ...publicItem(row, this.root),start: Number(chunk.start),end: Number(chunk.end),excerpt: row.text.slice(Number(chunk.start), Number(chunk.end)) });
+        matches.push({ ...this.#public(row),start: Number(chunk.start),end: Number(chunk.end),excerpt: row.text.slice(Number(chunk.start), Number(chunk.end)) });
         if (matches.length >= limit) break;
       }
       return { matches,staleCandidates,hint: staleCandidates ? 'Some entries changed or are unavailable. Refresh and search again.' : '' };
@@ -304,8 +334,117 @@ export class Library {
       let row = this.db.prepare('SELECT * FROM items WHERE id=?').get(id);
       if (!row) fail('not-found', 'Library entry not found.');
       row = await this.#index(row.relative_path, {}, row);
-      return { ...publicItem(row, this.root),text: row.text.slice(offset, offset + limit),offset,totalChars: row.text.length,
+      return { ...this.#public(row),text: row.text.slice(offset, offset + limit),offset,totalChars: row.text.length,
         nextOffset: offset + limit < row.text.length ? offset + limit : null };
+    });
+  }
+
+  /** Paged gallery queries apply every filter before LIMIT, including FTS matches. */
+  browse({ query = '',offset = 0,limit = 60,folderId,kind = 'all',favorite,sort = 'recent' } = {}) {
+    if (typeof query !== 'string' || query.length > 2000) fail('invalid-query','Query must be at most 2000 characters.');
+    if (!Number.isSafeInteger(offset) || offset < 0 || !Number.isSafeInteger(limit) || limit < 1 || limit > 100) fail('invalid-page','Use a nonnegative offset and limit 1..100.');
+    const orders = { recent:'i.created_at DESC,i.id',oldest:'i.created_at ASC,i.id',name:'i.title COLLATE NOCASE,i.id',size:'i.size DESC,i.id',recommended:'coalesce(m.favorite,0) DESC,i.created_at DESC,i.id' };
+    if (!Object.hasOwn(orders,sort) || !['all','images','documents','notes'].includes(kind)) fail('invalid-filter','Unknown sort or item type.');
+    if (favorite !== undefined && typeof favorite !== 'boolean') fail('invalid-filter','favorite must be a boolean.');
+    return this.#run(() => {
+      const where = [],args = [];
+      if (folderId !== undefined) { this.#folder(folderId); where.push("coalesce(m.folder_id,'')=?"); args.push(folderId); }
+      if (favorite !== undefined) { where.push('coalesce(m.favorite,0)=?'); args.push(Number(favorite)); }
+      const image = ['png','jpg','jpeg','gif','webp','avif','bmp','tif','tiff'].map(ext => "lower(i.name) LIKE '%." + ext + "'").join(' OR ');
+      if (kind === 'images') where.push('(' + image + ')');
+      if (kind === 'notes') where.push("i.source='note'");
+      if (kind === 'documents') where.push('NOT (' + image + ") AND i.source!='note'");
+      if (query.trim()) {
+        const words = [...new Set(tokenize(query))].slice(0,64);
+        if (!words.length) where.push('0');
+        else { where.push('i.id IN (SELECT item_id FROM chunks WHERE chunks MATCH ?)'); args.push(words.map(word => '"' + word + '"').join(' OR ')); }
+      }
+      const from = ' FROM items i LEFT JOIN library_item_meta m ON m.item_id=i.id' + (where.length ? ' WHERE ' + where.join(' AND ') : '');
+      const total = this.db.prepare('SELECT count(*) AS n' + from).get(...args).n;
+      const rows = this.db.prepare("SELECT i.*,coalesce(m.folder_id,'') AS folder_id,coalesce(m.favorite,0) AS favorite" + from + ' ORDER BY ' + orders[sort] + ' LIMIT ? OFFSET ?').all(...args,limit,offset);
+      return { items:rows.map(row => publicItem(row,this.root)),total,nextOffset:offset + rows.length < total ? offset + rows.length : null };
+    });
+  }
+
+  folders() {
+    return this.#run(() => ({
+      folders:this.db.prepare('SELECT * FROM library_folders ORDER BY name COLLATE NOCASE,id').all().map(folder => {
+        const count = this.db.prepare('SELECT count(*) AS n FROM library_item_meta m JOIN items i ON i.id=m.item_id WHERE m.folder_id=?').get(folder.id).n;
+        const imageFilter = ['png','jpg','jpeg','gif','webp','avif','bmp','tif','tiff'].map(ext => "lower(i.name) LIKE '%." + ext + "'").join(' OR ');
+        const covers = this.db.prepare('SELECT i.* FROM items i JOIN library_item_meta m ON m.item_id=i.id WHERE m.folder_id=? AND (' + imageFilter + ') ORDER BY i.created_at DESC,i.id LIMIT 3').all(folder.id).map(row => this.#public(row));
+        return { id:folder.id,name:folder.name,parentId:folder.parent_id,createdAt:folder.created_at,count,covers };
+      }),
+    }));
+  }
+
+  createFolder({ name,parentId = '' }) {
+    safeName(name);
+    return this.#run(() => {
+      this.#folder(parentId);
+      if (this.db.prepare('SELECT count(*) AS n FROM library_folders').get().n >= 1000) fail('folder-limit','At most 1000 library folders are supported.');
+      if (this.db.prepare('SELECT id FROM library_folders WHERE parent_id=? AND name=? COLLATE NOCASE').get(parentId,name)) fail('folder-exists','A folder with that name already exists here.');
+      const id = randomUUID(),createdAt = new Date().toISOString();
+      this.db.prepare('INSERT INTO library_folders VALUES (?,?,?,?)').run(id,name,parentId,createdAt);
+      return { id,name,parentId,createdAt,count:0,covers:[] };
+    });
+  }
+
+  renameFolder({ id,name }) {
+    safeName(name);
+    return this.#run(() => {
+      if (!id) fail('invalid-folder','Select a folder to rename.');
+      this.#folder(id);
+      const folder = this.db.prepare('SELECT * FROM library_folders WHERE id=?').get(id);
+      if (this.db.prepare('SELECT id FROM library_folders WHERE parent_id=? AND name=? COLLATE NOCASE AND id!=?').get(folder.parent_id,name,id)) fail('folder-exists','A folder with that name already exists here.');
+      this.db.prepare('UPDATE library_folders SET name=? WHERE id=?').run(name,id);
+      return { id,name,parentId:folder.parent_id };
+    });
+  }
+
+  removeFolder({ id }) {
+    return this.#run(() => {
+      if (!id) fail('invalid-folder','Select a folder to remove.');
+      this.#folder(id);
+      const folder = this.db.prepare('SELECT * FROM library_folders WHERE id=?').get(id);
+      const conflict = this.db.prepare('SELECT a.id FROM library_folders a JOIN library_folders b ON a.name=b.name COLLATE NOCASE WHERE a.parent_id=? AND b.parent_id=? AND b.id!=? LIMIT 1').get(id,folder.parent_id,id);
+      if (conflict) fail('folder-conflict','Rename conflicting child folders before removing their parent.');
+      this.db.exec('BEGIN IMMEDIATE');
+      try {
+        this.db.prepare('UPDATE library_item_meta SET folder_id=? WHERE folder_id=?').run(folder.parent_id,id);
+        this.db.prepare('UPDATE library_folders SET parent_id=? WHERE parent_id=?').run(folder.parent_id,id);
+        this.db.prepare('DELETE FROM library_folders WHERE id=?').run(id);
+        this.db.exec('COMMIT');
+      } catch (error) { this.db.exec('ROLLBACK'); throw error; }
+      return { id,parentId:folder.parent_id,filesPreserved:true };
+    });
+  }
+
+  update({ id,title,description,tags,folderId,favorite }) {
+    validateMetadata({ title,description,tags });
+    if (typeof id !== 'string' || !id) fail('invalid-id','Use a library item id.');
+    if (favorite !== undefined && typeof favorite !== 'boolean') fail('invalid-favorite','favorite must be a boolean.');
+    return this.#run(() => {
+      const row = this.db.prepare('SELECT * FROM items WHERE id=?').get(id);
+      if (!row) fail('not-found','Library entry not found.');
+      if (folderId !== undefined) this.#folder(folderId);
+      const prior = this.db.prepare('SELECT * FROM library_item_meta WHERE item_id=?').get(id);
+      if (title !== undefined) row.title = title;
+      if (description !== undefined) row.description = description;
+      if (tags !== undefined) row.tags = JSON.stringify(tags);
+      row.updated_at = new Date().toISOString();
+      this.#replace(row);
+      this.db.prepare('INSERT OR REPLACE INTO library_item_meta VALUES (?,?,?,?)').run(id,folderId ?? prior?.folder_id ?? '',Number(favorite ?? Boolean(prior?.favorite)),row.updated_at);
+      return this.#public(row);
+    });
+  }
+
+  asset(id) {
+    if (typeof id !== 'string' || !id) fail('invalid-id','Use a library item id.');
+    return this.#run(async () => {
+      const row = this.db.prepare('SELECT * FROM items WHERE id=?').get(id);
+      if (!row) fail('not-found','Library entry not found.');
+      const { bytes } = await this.#bytes(row.relative_path);
+      return { bytes,name:row.name,sha256:digest(bytes),kind:itemKind(row.name,row.source) };
     });
   }
 

@@ -69,14 +69,15 @@ try {
   assert.equal((await rpc('list')).total,1);
   assert.equal((await rpc('search',{ query:'retrieval' })).matches.length,1);
   const prompt=await ctx.get('systemPrompt').assemble();
-  assert.equal(prompt.tools.filter(tool => tool.name.startsWith('library_')).length,6);
+  assert.equal(prompt.tools.filter(tool => tool.name.startsWith('library_')).length,8);
   assert.equal(prompt.sections.some(section => section.name === 'library:usage'),true);
   const imageBytes=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/l9sAAAAASUVORK5CYII=','base64');
+  const folder=await rpc('createFolder',{ name:'安装包资料' });
   const imageSource=path.join(temporary,'原始图片.png');
   await writeFile(imageSource,imageBytes);
   const stored=await ctx.get('tools').execute({
     callId:'packed-image-save',name:'library_store',
-    arguments:{ sourcePath:imageSource,content:'',name:'',title:'Packed image',tags:['packedImage'] },
+    arguments:{ sourcePath:imageSource,content:'',name:'',title:'Packed image',tags:['packedImage'],folderId:folder.id,favorite:true },
     signal:new AbortController().signal,
   });
   assert.equal(stored.isError,false,stored.error?.message);
@@ -89,6 +90,8 @@ try {
   const imageHits=await rpc('search',{ query:'packedImage' });
   assert.equal(imageHits.matches[0].id,stored.value.id);
   assert.equal((await rpc('list')).total,2);
+  assert.equal((await rpc('browse',{ folderId:folder.id,favorite:true,kind:'images' })).items[0].id,stored.value.id);
+  assert.equal((await rpc('folders')).folders[0].count,1);
   console.log('Packed plugin boots through Harness; a real model tool call saves the original PNG with empty content, and RPC finds the stored image and metadata.');
 } finally {
   await ctx?.fiber.dispose();

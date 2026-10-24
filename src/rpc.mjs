@@ -10,13 +10,19 @@ function exact(payload,allowed) {
 export async function dispatch(manager,method,payload) {
   if (method === 'status') { exact(payload,[]); return manager.status(); }
   if (method === 'configure') { exact(payload,['directory']); return manager.configure(payload.directory); }
+  if (method === 'browse') { exact(payload,['query','offset','limit','folderId','kind','favorite','sort']); return manager.call('browse',payload); }
+  if (method === 'folders') { exact(payload,[]); return manager.call('folders'); }
+  if (method === 'createFolder') { exact(payload,['name','parentId']); return manager.call('createFolder',payload); }
+  if (method === 'renameFolder') { exact(payload,['id','name']); return manager.call('renameFolder',payload); }
+  if (method === 'removeFolder') { exact(payload,['id']); return manager.call('removeFolder',payload); }
+  if (method === 'update') { exact(payload,['id','title','description','tags','folderId','favorite']); return manager.call('update',payload); }
   if (method === 'list') { exact(payload,['offset','limit']); return manager.call('list',payload); }
   if (method === 'search') { exact(payload,['query','limit']); return manager.call('search',payload.query,payload.limit); }
   if (method === 'read') { exact(payload,['id','offset','limit']); const { id,...options } = payload; return manager.call('read',id,options); }
   if (method === 'refresh') { exact(payload,[]); return manager.call('refresh'); }
   if (method === 'download') { exact(payload,['id']); return manager.call('download',payload.id); }
   if (method === 'upload' || method === 'note') {
-    exact(payload,method === 'upload' ? ['name','base64','title','description','tags'] : ['name','content','title','description','tags']);
+    exact(payload,method === 'upload' ? ['name','base64','title','description','tags','folderId','favorite'] : ['name','content','title','description','tags','folderId','favorite']);
     validateMetadata(payload);
     const { maxFileBytes } = await manager.status();
     let bytes;
@@ -31,14 +37,14 @@ export async function dispatch(manager,method,payload) {
       bytes = Buffer.from(payload.content,'utf8');
     }
     return manager.call('store', { bytes,name: payload.name ?? 'note.md',title: payload.title,
-      description: payload.description,tags: payload.tags,source: method === 'note' ? 'note' : 'browser-upload' });
+      description: payload.description,tags: payload.tags,folderId:payload.folderId,favorite:payload.favorite,source: method === 'note' ? 'note' : 'browser-upload' });
   }
   throw new LibraryError('bad-request','Unknown library operation.');
 }
 
 /** Harness authenticates this exact route and enforces owner-peer access. */
 export function installLibraryRpc(ctx,manager) {
-  return ctx.connection.fetch.register({
+  const stopRpc = ctx.connection.fetch.register({
     path: '/api/' + RPC_METHOD,methods: ['POST'],requestBody: 'buffered',
     async fetch(request) {
       if (request.headers.get('content-type')?.split(';')[0].trim().toLowerCase() !== 'application/json') return new Response('Expected application/json',{ status: 415 });
@@ -59,4 +65,51 @@ export function installLibraryRpc(ctx,manager) {
       return Response.json({ type: 'server-response',rpcId: envelope.rpcId,result });
     },
   });
+  const cache = new Map();
+  let cachedBytes = 0;
+  const stopAsset = ctx.connection.fetch.register({
+    path:'/api/' + RPC_METHOD + '/asset',methods:['GET'],requestBody:'buffered',
+    async fetch(request) {
+      const url = new URL(request.url),id = url.searchParams.get('id');
+      try {
+        request.signal.throwIfAborted();
+        const asset = await manager.call('asset',id);
+        let bytes = asset.bytes,mime = 'application/octet-stream';
+        const thumbnail = url.searchParams.get('thumbnail') === '1';
+        if (thumbnail) {
+          if (asset.kind !== 'image') throw new LibraryError('unsupported-preview','No image thumbnail is available.');
+          const key = asset.sha256;
+          const cached = cache.get(key);
+          if (cached) { cache.delete(key); cache.set(key,cached); bytes = cached; }
+          else {
+            const { default:sharp } = await import('sharp');
+            bytes = await sharp(bytes,{ limitInputPixels:64000000,animated:false }).rotate().resize({ width:480,height:640,fit:'inside',withoutEnlargement:true }).webp({ quality:76 }).toBuffer();
+            if (bytes.length <= 4 * 1024 * 1024) {
+              cache.set(key,bytes); cachedBytes += bytes.length;
+              while (cache.size > 128 || cachedBytes > 32 * 1024 * 1024) {
+                const oldest = cache.keys().next().value; cachedBytes -= cache.get(oldest).length; cache.delete(oldest);
+              }
+            }
+          }
+          mime = 'image/webp';
+        } else {
+          const ext = asset.name.toLowerCase().split('.').pop();
+          mime = ({ png:'image/png',jpg:'image/jpeg',jpeg:'image/jpeg',gif:'image/gif',webp:'image/webp',avif:'image/avif',bmp:'image/bmp',tif:'image/tiff',tiff:'image/tiff',pdf:'application/pdf' })[ext] ?? mime;
+        }
+        const download = url.searchParams.get('download') === '1' || mime === 'application/octet-stream';
+        const headers = {
+          'content-type':mime,'content-length':String(bytes.length),'x-content-type-options':'nosniff',
+          'cache-control':url.searchParams.get('v') === asset.sha256 ? 'private, max-age=3600' : 'private, no-store',
+          'cross-origin-resource-policy':'same-origin',
+          'content-security-policy':"default-src 'none'; sandbox",
+          'content-disposition':(download ? 'attachment' : 'inline') + "; filename*=UTF-8''" + encodeURIComponent(asset.name),
+        };
+        return new Response(bytes,{ headers });
+      } catch (error) {
+        const status = ['not-found','ENOENT'].includes(error.code) ? 404 : error.code === 'file-too-large' ? 413 : error.code === 'unsupported-preview' ? 415 : error.code === 'unsafe-path' ? 403 : 400;
+        return Response.json({ error:{ code:error.code ?? 'preview-failed',message:error.message } },{ status,headers:{ 'cache-control':'no-store' } });
+      }
+    },
+  });
+  return async () => { cache.clear(); cachedBytes=0; await Promise.all([stopAsset(),stopRpc()]); };
 }

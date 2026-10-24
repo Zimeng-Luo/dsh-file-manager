@@ -112,3 +112,18 @@ test('invalid input types and cancelled file saves produce no library entry',asy
   assert.equal(cancelled.isError,true);
   assert.equal((await run('library_list',{})).total,0);
 });
+
+test('another session can organize a saved image using folder and favorite tools',async t => {
+  const { source,run,b }=await fixture(t);
+  const folder=await run('library_folders',{ action:'create',name:'创作助手' },b);
+  const saved=await run('library_store',{ sourcePath:source,content:'',folderId:folder.id,favorite:true });
+  assert.equal(saved.folderId,folder.id); assert.equal(saved.favorite,true);
+  await run('library_update',{ id:saved.id,title:'可检索原图',tags:['organizedImage'] },b);
+  const hits=await run('library_search',{ query:'organizedImage',folderId:folder.id,favorite:true },b);
+  assert.equal(hits.matches[0].id,saved.id);
+  assert.equal((await run('library_list',{ kind:'images',folderId:folder.id },b)).total,1);
+  assert.equal((await run('library_folders',{ action:'list' },b)).folders[0].count,1);
+  await run('library_folders',{ action:'remove',id:folder.id },b);
+  assert.equal((await run('library_read',{ id:saved.id },b)).folderId,'');
+  assert.deepEqual(await readFile(saved.path),png);
+});

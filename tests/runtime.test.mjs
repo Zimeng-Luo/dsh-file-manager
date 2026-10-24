@@ -32,7 +32,7 @@ test('real Cordis loader and Harness Connection serve the Library RPC',async () 
     assert.equal(envelope.result.value.configured,false);
     await Promise.all([...ctx.registry.values()].flatMap(runtime => Array.from(runtime.fibers,fiber => fiber.await())));
     const prompt = await ctx.get('systemPrompt').assemble();
-    assert.equal(prompt.tools.filter(tool => tool.name.startsWith('library_')).length,6);
+    assert.equal(prompt.tools.filter(tool => tool.name.startsWith('library_')).length,8);
     assert.equal(prompt.sections.some(section => section.name === 'library:usage'),true);
   } finally {
     await ctx.fiber.dispose();
@@ -76,7 +76,7 @@ test('Library RPC works before any agent services exist, and tools can arrive la
   await ctx.plugin(Tools,{});
   await Promise.all([...ctx.registry.values()].flatMap(runtime => Array.from(runtime.fibers,fiber => fiber.await())));
   const prompt = await ctx.get('systemPrompt').assemble();
-  assert.equal(prompt.tools.filter(tool => tool.name.startsWith('library_')).length,6);
+  assert.equal(prompt.tools.filter(tool => tool.name.startsWith('library_')).length,8);
   assert.equal(prompt.sections.some(section => section.name === 'library:usage'),true);
 });
 
@@ -91,4 +91,29 @@ test('a failed startup directory reports its error through RPC and can be repair
   assert.equal((await request('status')).value.initializationError,null);
   assert.equal((await request('note',{ content:'recovered' })).ok,true);
   assert.equal((await request('list')).value.total,1);
+});
+
+test('authenticated assets return real thumbnails and reject a non-owner peer',async t => {
+  const { ctx,base,request }=await runtimeFixture(t);
+  await request('configure',{ directory:path.join(base,'library') });
+  const png='iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/l9sAAAAASUVORK5CYII=';
+  // A generated PNG avoids relying on malformed sample-image CRCs.
+  const { default:sharp }=await import('sharp');
+  const bytes=await sharp({ create:{ width:960,height:1440,channels:3,background:'#6087a5' } }).png().toBuffer();
+  const saved=await request('upload',{ name:'image.png',base64:bytes.toString('base64') });
+  assert.equal(saved.ok,true);
+  const handler=ctx.get('connection').createSharedFetchHandler('/api');
+  const url='http://localhost/api/dsh-file-manager/asset?id='+saved.value.id+'&thumbnail=1&v='+saved.value.sha256;
+  const response=await handler.fetch(new Request(url),{ principal:{ kind:'owner' } });
+  assert.equal(response.status,200,await response.clone().text());
+  assert.equal(response.headers.get('content-type'),'image/webp');
+  const metadata=await sharp(Buffer.from(await response.arrayBuffer())).metadata();
+  assert.ok(metadata.width<=480); assert.ok(metadata.height<=640);
+  assert.equal((await handler.fetch(new Request(url),{ principal:{ kind:'guest' } })).status,403);
+  const svg=await request('upload',{ name:'unsafe.svg',base64:Buffer.from('<svg onload="alert(1)"/>').toString('base64') });
+  const raw=await handler.fetch(new Request('http://localhost/api/dsh-file-manager/asset?id='+svg.value.id),{ principal:{ kind:'owner' } });
+  assert.equal(raw.headers.get('content-type'),'application/octet-stream');
+  assert.match(raw.headers.get('content-disposition'),/attachment/);
+  const missing=await handler.fetch(new Request('http://localhost/api/dsh-file-manager/asset?id=../../outside'),{ principal:{ kind:'owner' } });
+  assert.equal(missing.status,404);
 });

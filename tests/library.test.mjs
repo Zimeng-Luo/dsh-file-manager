@@ -130,7 +130,7 @@ test('UI and tools share storage; malformed uploads fail; RPC correlates respons
   await assert.rejects(dispatch(manager,'upload',{ name:'bad.md',base64:'not-base64!' }),/base64/);
   await assert.rejects(dispatch(manager,'list',{ directory:'/elsewhere' }),/fields/);
   let route;
-  installLibraryRpc({ connection:{ fetch:{ register(value) { route=value; return () => {}; } } } },manager);
+  installLibraryRpc({ connection:{ fetch:{ register(value) { if (value.path==='/api/'+RPC_METHOD) route=value; return () => {}; } } } },manager);
   const response=await route.fetch(new Request('http://localhost/api/'+RPC_METHOD,{
     method:'POST',headers:{ 'content-type':'application/json' },
     body:JSON.stringify({ type:'client-request',method:RPC_METHOD,rpcId:'request-7',payload:{ method:'list',payload:{} } }),

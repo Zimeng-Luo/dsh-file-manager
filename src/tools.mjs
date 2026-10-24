@@ -16,7 +16,7 @@ function storeInput(args) {
     throw new LibraryError('invalid-store','library_store expects an object with sourcePath or content.');
   }
   const input = { ...args };
-  for (const field of ['sourcePath','content','name','title','description','tags']) {
+  for (const field of ['sourcePath','content','name','title','description','tags','folderId','favorite']) {
     if (input[field] === null) delete input[field];
   }
   for (const field of ['sourcePath','content','name']) {
@@ -51,6 +51,7 @@ export function createLibraryTools(manager,fs,workingDirectory,getServices) {
         name: text('Filename without directories. Optional for source files; default note.md for text.'),
         title: text('Display title.'),description: text('Description to aid future searches.'),
         tags: { type: 'array',maxItems: 30,items: { type: 'string',maxLength: 100 } },
+        folderId:text('Destination folder id from library_folders; empty or omitted means unfiled.'),favorite:{ type:'boolean',description:'Mark this saved item as a favorite.' },
       }),
       output,
       async execute(rawArgs,exec) {
@@ -78,23 +79,44 @@ export function createLibraryTools(manager,fs,workingDirectory,getServices) {
           bytes = Buffer.from(args.content,'utf8'); name = args.name ?? 'note.md'; source = 'note';
         }
         exec.signal?.throwIfAborted();
-        return manager.call('store', { bytes,name,title: args.title,description: args.description,tags: args.tags,source });
+        return manager.call('store', { bytes,name,title: args.title,description: args.description,tags: args.tags,folderId:args.folderId,favorite:args.favorite,source });
       },
     },
     {
       name: 'library_list',description: 'List shared library files and notes independently of this Session workspace. Follow nextOffset.',
-      parameters: schema({ offset: { type: 'integer',minimum: 0 },limit: limit(100) }),
-      output,execute: args => manager.call('list',args),
+      parameters: schema({ offset:{ type:'integer',minimum:0 },limit:limit(100),folderId:text('Optional folder id; omit to search the whole library.'),kind:{ type:'string',enum:['all','images','documents','notes'] },favorite:{ type:'boolean' },sort:{ type:'string',enum:['recent','oldest','name','size','recommended'] } }),
+      output,execute: args => manager.call('browse',args),
     },
     {
       name: 'library_search',description: 'Search shared library filenames, titles, descriptions, tags and indexed text. Use to find material saved in other conversations. Excerpts do not prove the whole document was read.',
-      parameters: schema({ query: text('Chinese or English keywords.'),limit: limit(30) },['query']),
-      output,execute: args => manager.call('search',args.query,args.limit),
+      parameters: schema({ query:text('Chinese or English keywords.'),limit:limit(30),offset:{ type:'integer',minimum:0 },folderId:text('Optional folder id from library_folders; omit for all folders.'),favorite:{ type:'boolean' },kind:{ type:'string',enum:['all','images','documents','notes'] } },['query']),
+      output,execute: async args => {
+        if (args.folderId === undefined && args.favorite === undefined && args.kind === undefined && args.offset === undefined) return manager.call('search',args.query,args.limit);
+        const result = await manager.call('browse',args);
+        return { ...result,matches:result.items };
+      },
     },
     {
       name: 'library_read',description: 'Read extracted text using the id from library_search/list/store. Follow nextOffset. Metadata-only files have no extracted text; use the returned path with an appropriate file tool.',
       parameters: schema({ id: text('Library item ID.'),offset: { type: 'integer',minimum: 0 },limit: limit(20000) },['id']),
       output,execute: ({ id,...options }) => manager.call('read',id,options),
+    },
+
+    {
+      name:'library_folders',description:'List or create library folders, rename a folder, or remove a folder while keeping its files in the parent folder. Always list folders first to obtain actual ids. Folders organize the shared library without moving the original source.',
+      parameters:schema({ action:{ type:'string',enum:['list','create','rename','remove'] },id:text('Existing folder id for rename/remove.'),name:text('Folder name for create/rename.'),parentId:text('Optional parent folder id for create. Empty means top level.') },['action']),
+      output,execute:({ action,id,name,parentId }) => {
+        if (action === 'list') return manager.call('folders');
+        if (action === 'create') return manager.call('createFolder',{ name,parentId });
+        if (action === 'rename') return manager.call('renameFolder',{ id,name });
+        if (action === 'remove') return manager.call('removeFolder',{ id });
+        throw new LibraryError('invalid-action','Use list, create, rename or remove.');
+      },
+    },
+    {
+      name:'library_update',description:'Organize an existing library item: change its title, description or tags, move it into a folder, or mark/unmark favorite. Obtain the item id from search/list/store and folder id from library_folders. Original file bytes remain unchanged.',
+      parameters:schema({ id:text('Library item id.'),title:text('Display title.'),description:text('Description.'),tags:{ type:'array',items:{ type:'string' } },folderId:text('Destination folder id, or empty string to unfile.'),favorite:{ type:'boolean' } },['id']),
+      output,execute:args => manager.call('update',args),
     },
     {
       name: 'library_refresh',description: 'Discover manually copied files and update changed or removed entries in the configured library directory.',
