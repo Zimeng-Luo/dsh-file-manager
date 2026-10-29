@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp,rm,writeFile } from 'node:fs/promises';
+import { mkdtemp,rm,writeFile,readFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { Context } from '@deepseek-ai/cordis';
@@ -119,4 +119,16 @@ test('authenticated assets return real thumbnails and reject a non-owner peer',a
   assert.match(raw.headers.get('content-disposition'),/attachment/);
   const missing=await handler.fetch(new Request('http://localhost/api/dsh-file-manager/asset?id=../../outside'),{ principal:{ kind:'owner' } });
   assert.equal(missing.status,404);
+});
+
+
+test('default 128 MiB cap accepts a real upload larger than the former 32 MiB limit',async t => {
+  const { base,request }=await runtimeFixture(t);
+  await request('configure',{ directory:path.join(base,'library') });
+  assert.equal((await request('status')).value.maxFileBytes,128 * 1024 * 1024);
+  const bytes=Buffer.alloc(33 * 1024 * 1024,0x5a);
+  const result=await request('upload',{ name:'large-original.bin',base64:bytes.toString('base64'),title:'大文件回归' });
+  assert.equal(result.ok,true,JSON.stringify(result));
+  assert.equal(result.value.bytes,bytes.length);
+  assert.deepEqual(await readFile(result.value.path),bytes);
 });

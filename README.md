@@ -127,7 +127,7 @@ F:\Library\
   config:
     directory: 'F:\Library'
     stateDir: 'F:\AgentData\library-settings'
-    maxFileBytes: 33554432
+    maxFileBytes: 134217728
     maxTextChars: 1000000
     chunkChars: 2400
     maxScanFiles: 20000
@@ -138,7 +138,7 @@ F:\Library\
 
 - directory：首次默认目录，须为 Host 上的绝对路径。
 - stateDir：设置文件目录。默认 DSH_HOME/integrations/file-manager；未设置 DSH_HOME 时使用用户目录下 .dsh/integrations/file-manager。
-- maxFileBytes：单个导入、上传、下载与正文解析上限，默认 32 MiB。较大的手动放入文件只登记元数据。
+- maxFileBytes：单个导入、上传、下载与正文解析上限，默认 128 MiB。较大的手动放入文件只登记元数据。
 - maxTextChars：每文件最多索引的字符数。
 - chunkChars：正文检索片段长度。
 - maxScanFiles：一次目录扫描的文件上限，达到时报告 capped，不能把结果当成完整发现。
@@ -155,6 +155,14 @@ F:\Library\
 当你要求保存收到的附件时，模型可将 dsh-im 提供的附件路径传给 library_store，复制成功的长期原件不受聊天附件保留期影响。共享库不绑定原会话，其他会话可继续检索。
 
 本版不修改 dsh-im，也不会无条件归档每一份聊天附件。更换 dsh-im 的 Agent Preset 后，需要 /new 才创建使用新预设的会话。资料库是实例内共享存储，调用者范围沿用你的 Harness 与 dsh-im 入口配置。
+
+## 在对话框引用资料
+
+输入 /library，直接从最近保存的文件中选择；输入 /lib 后选择「引用资料库文件」也会打开选择列表。使用 /library:关键词 搜索整个资料库的名称、标签和已提取正文，例如 /library:合同。按方向键选择、Enter 确认，或直接点击文件；选中后成为输入框中的文件引用，可以继续写问题，也可以连续引用多个文件。Esc 关闭选择，不会自动发送消息。
+
+引用通过 Harness 原生输入触发器和引用 chip 接口插入，保留当前草稿和附件。它保存资料 id，发送时重新确认文件记录；原文件已移除等读取错误会阻止发送，避免把失效引用当作成功。模型收到明确的资料 id 后通过 library_read 读取正文，不依赖当前工作区路径。图片引用不等于自动把图片像素附加到消息，模型需要用可用的图像工具打开原件。资料库中的复制引用文本 [[library:ID]] 也可跨会话使用。
+
+单文件默认上限为 128 MiB（134217728 字节），网页上传、模型保存、原件下载和正文解析共用这一限制。已显式配置 maxFileBytes 的实例继续使用自己的值。
 
 ## 开发与验证
 

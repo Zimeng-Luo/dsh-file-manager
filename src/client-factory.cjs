@@ -1,7 +1,7 @@
 module.exports = function dshFileManagerClient(require) {
   const React = require('react'), h = React.createElement, ID = 'dsh-file-manager';
   const zh = {
-    library:'资料库',all:'全部',recommended:'推荐',favorites:'收藏',folders:'文件夹',images:'图像',items:'项目',
+    referenceCommand:'引用资料库文件',referenceHint:'输入 /library:关键词 搜索，选择文件插入引用',referenceSetup:'请先在资料库页面设置目录',referenceEmpty:'没有匹配的资料，请更换关键词',referenceRecent:'最近保存 · 输入 /library:关键词 搜索全部资料',library:'资料库',all:'全部',recommended:'推荐',favorites:'收藏',folders:'文件夹',images:'图像',items:'项目',
     search:'搜索资料库',new:'新建',upload:'上传文件',newNote:'新建笔记',newFolder:'新建文件夹',settings:'资料库设置',
     sort:'排序',grid:'网格视图',listView:'列表视图',recent:'最近添加',oldest:'最早添加',name:'名称',size:'文件大小',recommendedSort:'收藏与最近',
     directory:'资料库目录',directoryHint:'填写运行 Harness 的机器上的绝对路径。',saveDirectory:'保存目录',
@@ -21,7 +21,7 @@ module.exports = function dshFileManagerClient(require) {
     textPreview:'提取的正文',image:'图像',pdf:'PDF',document:'文档',spreadsheet:'表格',presentation:'演示文稿',note:'笔记',file:'文件',
   };
   const en = {
-    library:'Library',all:'All',recommended:'Suggested',favorites:'Favorites',folders:'Folders',images:'Images',items:'Items',
+    referenceCommand:'Reference a library file',referenceHint:'Type /library:query to search, then choose a file',referenceSetup:'Choose a directory on the Library page first',referenceEmpty:'No matching files. Try another search.',referenceRecent:'Recent files · type /library:query to search the whole library',library:'Library',all:'All',recommended:'Suggested',favorites:'Favorites',folders:'Folders',images:'Images',items:'Items',
     search:'Search library',new:'New',upload:'Upload files',newNote:'New note',newFolder:'New folder',settings:'Library settings',
     sort:'Sort by',grid:'Grid view',listView:'List view',recent:'Recently added',oldest:'Oldest first',name:'Name',size:'File size',recommendedSort:'Favorites and recent',
     directory:'Library directory',directoryHint:'Use an absolute path on the Harness host.',saveDirectory:'Save directory',
@@ -298,7 +298,7 @@ module.exports = function dshFileManagerClient(require) {
           offset > 0 || data.nextOffset != null ? h('div',{ className:'dlf-pager' },button('previous',{ className:'dlf-secondary',disabled:busy || offset === 0,onClick:() => { setOffset(Math.max(0,offset - 60)); setSelected([]); } }),h('span',{ className:'dlf-count' },Math.floor(offset / 60) + 1),button('next',{ className:'dlf-secondary',disabled:busy || data.nextOffset == null,onClick:() => { setOffset(data.nextOffset); setSelected([]); } })) : null) : null,
         tab === 'folders' && !childrenFolders.length ? h('div',{ className:'dlf-empty' },h(Icon,{ name:'folder',size:46 }),h('h3',null,t(noItemsTitle)),h('p',null,t(noItemsHint)),button('newFolder',{ className:'dlf-primary',onClick:() => { setFolderEdit({ create:true }); setFolderName(''); } })) : null) : null,
       loading ? h('div',{ className:'dlf-gallery','aria-busy':true },[0,1,2,3].map(value => h('div',{ key:value,className:'dlf-loading' }))) : null,
-      h('p',{ className:'dlf-muted',style:{ marginTop:32,fontSize:10,opacity:.5 } },'DSH Library · 0.2.1')),
+      h('p',{ className:'dlf-muted',style:{ marginTop:32,fontSize:10,opacity:.5 } },'DSH Library · 0.2.2')),
       settings ? h(Dialog,{ error,title:t('settings'),onClose:() => setSettings(false),t },directoryForm) : null,
       noteOpen ? h(Dialog,{ error,title:t('newNote'),onClose:() => setNoteOpen(false),t },
         h('form',{ onSubmit:event => { event.preventDefault(); void run(async () => { await api('note',{ name:'note.md',title:noteTitle || 'note.md',content:noteContent,tags:tags(noteTags),folderId:folderId ?? '' }); setNoteOpen(false); setNoteTitle(''); setNoteContent(''); setNoteTags(''); setNotice(t('saved')); setTab('all'); setSearch(''); setQuery(''); setOffset(0); }); } },
@@ -341,6 +341,62 @@ module.exports = function dshFileManagerClient(require) {
             button('copyPath',{ className:'dlf-secondary',onClick:() => run(async () => { await navigator.clipboard.writeText(preview.path); setNotice(t('copied')); }) })))) : null,
       dragging ? h('div',{ className:'dlf-drop' },h(Icon,{ name:'upload',size:54 }),t('dropped'),current ? h('small',null,current.name) : null) : null);
   }
+  // A native reference source lets the composer own spans, draft revisions,
+  // keyboard navigation, attachments and durable chips. It never submits a turn.
+  function createReferenceSource(api,t) {
+    const source = 'dsh-library';
+    const notice = message => [{ name:'library',label:t('library'),description:message,value:JSON.stringify({ kind:'notice' }),icon:'folder' }];
+    return {
+      trigger:'/',name:source,order:35,showGroupTitle:false,
+      async candidates(_session,{ query,signal }) {
+        const normalized=query.toLowerCase();
+        if (normalized !== 'library' && !normalized.startsWith('library:')) {
+          return 'library'.startsWith(normalized)
+            ? [{ name:'library',label:t('referenceCommand'),description:t('referenceHint'),icon:'folder',value:JSON.stringify({ kind:'open' }) }]
+            : [];
+        }
+        try {
+          const status=await api('status',{},signal);
+          if (!status.configured) return notice(t('referenceSetup'));
+          const keyword=query.slice('library'.length).replace(/^:/,'').trim();
+          const result=await api('browse',{ query:keyword,limit:100,sort:'recent' },signal);
+          if (signal?.aborted) return [];
+          if (!result.items.length) return notice(t('referenceEmpty'));
+          return result.items.map(item => ({
+            name:item.name,label:item.title || item.name,icon:'file',section:t('library'),
+            description:[item.name,(item.tags ?? []).join(' · '),keyword ? '' : t('referenceRecent')].filter(Boolean).join(' · '),
+            value:JSON.stringify({ kind:'file',id:item.id,label:item.title || item.name }),
+          }));
+        } catch (error) {
+          if (signal?.aborted) return [];
+          return notice(error.message || String(error));
+        }
+      },
+      onPick({ candidate }) {
+        let value;
+        try { value=JSON.parse(candidate.value); } catch { return undefined; }
+        if (value.kind === 'open') return { text:'/library:',continue:true };
+        if (value.kind !== 'file' || typeof value.id !== 'string' || !value.id) return undefined;
+        return { insert:{ source,ref:value.id,label:value.label,appearance:'file',clipboardText:'[[library:'+value.id+']]' } };
+      },
+      matchSpace(_session,token) {
+        return token.toLowerCase() === '/library' ? { text:'/library:',continue:true } : undefined;
+      },
+      async matchEnter(_session,line) {
+        return line.toLowerCase() === '/library' ? { text:'/library:',continue:true } : undefined;
+      },
+      codec:{
+        clipboardText:ref => '[[library:'+ref+']]',
+        async serialize(ref,signal) {
+          // Resolve again on send: renamed records stay valid, missing records
+          // block the send instead of silently turning into a stale filename.
+          const item=await api('read',{ id:ref,offset:0,limit:1 },signal);
+          if (signal?.aborted) throw new Error('Library reference cancelled');
+          return '[[library:'+item.id+']] '+JSON.stringify({ title:item.title,name:item.name });
+        },
+      },
+    };
+  }
   function apply(ctx) {
     ctx.effect(() => ctx.locale.register(ID,{ zh,en }),'library: dictionaries');
     const t = ctx.locale.bind(ID);
@@ -349,11 +405,12 @@ module.exports = function dshFileManagerClient(require) {
       if (!result.ok) throw new Error(result.error.message);
       return result.value;
     };
+    ctx.inject(['inputTriggers'],triggerCtx => triggerCtx.effect(() => triggerCtx.inputTriggers.registerSource(createReferenceSource(api,t)),'library: composer references'));
     ctx.inject(['layout'],pageCtx => pageCtx.slots.inject('main',() => {
       const stopPage = pageCtx.slots.register({ name:'main',key:ID,locale:ID,inject:() => ({ api,t }) },LibraryPage);
       const stopSidebar = pageCtx.slots.inject('sidebar.panellist',() => pageCtx.slots.register({ name:'sidebar.panellist',id:ID,order:30,label:() => t('library'),locale:ID },props => h(Icon,{ name:'folder',...props })));
       return () => { stopSidebar(); stopPage(); };
     }));
   }
-  return { name:'dsh-file-manager-client',inject:['slots','connection','locale'],apply,LibraryPage };
+  return { name:'dsh-file-manager-client',inject:['slots','connection','locale'],apply,LibraryPage,createReferenceSource };
 };

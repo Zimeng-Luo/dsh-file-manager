@@ -25,7 +25,7 @@ test('the installed plugin starts when its bundle row omits config',async () => 
     }),{ principal:{ kind:'owner' } });
     assert.equal(response.status,200,await response.clone().text());
     assert.equal((await response.json()).result.value.configured,false);
-    assert.equal(Host.Config.parse(undefined).maxFileBytes,32 * 1024 * 1024);
+    assert.equal(Host.Config.parse(undefined).maxFileBytes,128 * 1024 * 1024);
   } finally {
     await ctx.fiber.dispose();
     if (previousHome === undefined) delete process.env.DSH_HOME;

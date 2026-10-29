@@ -62,7 +62,7 @@ try {
     ['/react-dom.js',await readFile(path.join(domRoot,'umd/react-dom.production.min.js'))],
     ['/client.js',await readFile(new URL('../client.js',import.meta.url))],
   ]);
-  const html='<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>DSH Library preview</title><style>html,body,#app{margin:0;width:100%;height:100%;font-family:Inter,ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans CJK SC",sans-serif;background:linear-gradient(135deg,#172d44 0%,#25213e 45%,#183a3b 100%) fixed}button,input,select,textarea{font-family:inherit}</style></head><body><div id="app"></div><script src="/react.js"></script><script src="/react-dom.js"></script><script>window.__ModuleLoader__={load:function(module){window.libraryClient=module.factory(function(name){if(name==="react")return React;throw Error(name)})}};</script><script src="/client.js"></script><script>let dictionary,entry,seq=0;const ctx={effect(fn){return fn()},inject(deps,fn){return fn(ctx)},locale:{register(id,d){dictionary=d.zh;return()=>{}},bind(){return key=>dictionary[key]??key}},slots:{inject(slot,fn){return fn()??(()=>{})},register(options,component){if(options.name==="main")entry={options,component};return()=>{}}},connection:{rpc:{async call(channel,method,payload,signal){const response=await fetch(channel+"/"+method,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({type:"client-request",rpcId:"browser-"+(++seq),method,payload}),signal});if(!response.ok)throw Error("HTTP "+response.status);return(await response.json()).result}}}};window.libraryClient.apply(ctx);ReactDOM.createRoot(document.getElementById("app")).render(React.createElement(entry.component,entry.options.inject()));</script></body></html>';
+  const html='<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>DSH Library preview</title><style>html,body,#app{margin:0;width:100%;height:100%;font-family:Inter,ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans CJK SC",sans-serif;background:linear-gradient(135deg,#172d44 0%,#25213e 45%,#183a3b 100%) fixed}button,input,select,textarea{font-family:inherit}</style></head><body><div id="app"></div><script src="/react.js"></script><script src="/react-dom.js"></script><script>window.__ModuleLoader__={load:function(module){window.libraryClient=module.factory(function(name){if(name==="react")return React;throw Error(name)})}};</script><script src="/client.js"></script><script>let dictionary,entry,seq=0;const ctx={effect(fn){return fn()},inject(deps,fn){return fn(ctx)},locale:{register(id,d){dictionary=d.zh;return()=>{}},bind(){return key=>dictionary[key]??key}},inputTriggers:{registerSource(source){window.librarySource=source;return()=>{}}},slots:{inject(slot,fn){return fn()??(()=>{})},register(options,component){if(options.name==="main")entry={options,component};return()=>{}}},connection:{rpc:{async call(channel,method,payload,signal){const response=await fetch(channel+"/"+method,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({type:"client-request",rpcId:"browser-"+(++seq),method,payload}),signal});if(!response.ok)throw Error("HTTP "+response.status);return(await response.json()).result}}}};window.libraryClient.apply(ctx);ReactDOM.createRoot(document.getElementById("app")).render(React.createElement(entry.component,entry.options.inject()));</script></body></html>';
   server=createServer(async (req,res) => {
     try {
       const url=new URL(req.url,'http://127.0.0.1');
@@ -94,6 +94,19 @@ try {
   await page.locator('.dlf-root img').evaluateAll(images => images.forEach(image => { image.loading='eager'; }));
   await expect(page.locator('.dlf-card img')).toHaveCount(8);
   await expect.poll(() => page.locator('.dlf-root img').evaluateAll(images => images.every(image => image.complete && image.naturalWidth>0)),{ timeout:15000 }).toBe(true);
+  const reference=await page.evaluate(async () => {
+    const source=window.librarySource,session={sessionId:'other-workspace'},signal=new AbortController().signal;
+    const rows=await source.candidates(session,{query:'library:家长调研',signal});
+    const file=rows.find(row=>JSON.parse(row.value).kind==='file');
+    if (!file) throw Error('Library command did not find the DOCX');
+    const result=source.onPick({candidate:file});
+    const text=await source.codec.serialize(result.insert.ref,signal);
+    return {ref:result.insert.ref,label:result.insert.label,text};
+  });
+  assert.match(reference.label,/家长调研/);
+  assert.ok(reference.text.includes('[[library:'+reference.ref+']]'));
+  const referenced=await manager.call('read',reference.ref);
+  assert.ok(referenced.text.length>0,'selected command id must resolve to actual extracted document text');
   await page.screenshot({ path:path.join(output,'gallery-desktop.png'),fullPage:true });
   await page.getByRole('button',{ name:'预览 配置灵感.png',exact:true }).click();
   let dialog=page.getByRole('dialog');

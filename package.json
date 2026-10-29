@@ -1,6 +1,6 @@
 {
   "name": "dsh-file-manager",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "type": "module",
   "description": "DeepSeek Harness 共享资料库：独立页面、文件入库、跨会话检索与模型工具",
   "main": "./src/host.mjs",
@@ -47,7 +47,8 @@
       "inject": [
         "@deepseek-ai/dsh-client-connection",
         "@deepseek-ai/dsh-client-ui-slots",
-        "@deepseek-ai/dsh-client-locale"
+        "@deepseek-ai/dsh-client-locale",
+        "@deepseek-ai/dsh-client-ui-input-trigger"
       ],
       "platform": "web"
     }

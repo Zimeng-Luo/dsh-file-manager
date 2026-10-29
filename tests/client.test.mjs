@@ -17,10 +17,11 @@ async function clientExports() {
   return exports;
 }
 test('client adds Library in the native sidebar panel group with its own main page',async () => {
-  const client=await clientExports(),entries=[],locales=new Map(),effects=[];
+  const client=await clientExports(),entries=[],sources=[],locales=new Map(),effects=[];
   const ctx={
     effect(activate) { const stop=activate(); if (stop) effects.push(stop); },
     inject(_dependencies,activate) { return activate(ctx); },
+    inputTriggers:{ registerSource(source) { sources.push(source); return () => sources.splice(sources.indexOf(source),1); } },
     slots:{
       inject(_slot,activate) { const stop=activate(); return typeof stop==='function' ? stop : () => {}; },
       register(options,component) { entries.push({ options,component }); return () => {}; },
@@ -37,6 +38,9 @@ test('client adds Library in the native sidebar panel group with its own main pa
   assert.equal(navigation.options.label(),'资料库');
   assert.equal(navigation.options.id,page.options.key);
   assert.equal(page.component,client.LibraryPage);
+  assert.equal(sources.length,1);
+  assert.equal(sources[0].trigger,'/');
+  assert.equal(sources[0].name,'dsh-library');
   for (const stop of effects.reverse()) await stop();
 });
 
@@ -114,4 +118,48 @@ test('gallery exposes thumbnails, real favorites, folder navigation and the list
     await flush(() => root.findByProps({ 'aria-label':'settings' }).props.onClick());
     assert.equal(root.findAllByProps({ id:'dlf-directory' }).length,1);
   } finally { if (renderer) await flush(() => renderer.unmount()); }
+});
+
+
+test('native /library source searches the shared library and inserts durable file references',async () => {
+  const client=await clientExports(),state=fakeApi();
+  state.stored.push({ id:'shared-id',name:'合同.docx',title:'项目合同',tags:['项目'],path:'F:/Library/files/shared-id/合同.docx' });
+  const source=client.createReferenceSource(state.api,key=>key),signal=new AbortController().signal;
+  const session={ sessionId:'unrelated-workspace' };
+  const request=query=>source.candidates(session,{ query,signal,position:'inline' });
+  const commands=await request('lib');
+  assert.equal(commands.length,1);
+  assert.deepEqual(source.onPick({ candidate:commands[0] }),{ text:'/library:',continue:true });
+  assert.deepEqual(await request('other'),[]);
+  const recent=await request('library');
+  assert.equal(recent.length,1);
+  const hits=await request('library:合同');
+  assert.equal(state.calls.filter(call=>call.method==='browse').at(-1).payload.query,'合同');
+  assert.equal(state.calls.filter(call=>call.method==='browse').at(-1).payload.folderId,undefined,'search spans every folder and workspace');
+  const outcome=source.onPick({ candidate:hits[0] });
+  assert.deepEqual(outcome.insert,{ source:'dsh-library',ref:'shared-id',label:'项目合同',appearance:'file',clipboardText:'[[library:shared-id]]' });
+  assert.deepEqual(source.matchSpace(session,'/library'),{ text:'/library:',continue:true });
+  assert.deepEqual(await source.matchEnter(session,'/library'),{ text:'/library:',continue:true });
+  assert.equal(await source.matchEnter(session,'/library this is a normal question'),undefined);
+  state.stored[0].title='发送前已重命名';
+  const serialized=await source.codec.serialize(outcome.insert.ref,signal);
+  assert.match(serialized,/\[\[library:shared-id\]\]/);
+  assert.match(serialized,/发送前已重命名/);
+  assert.equal(state.calls.at(-1).method,'read');
+  assert.equal(source.codec.clipboardText('shared-id'),'[[library:shared-id]]');
+  await assert.rejects(source.codec.serialize('shared-id',AbortSignal.abort()),/cancelled/);
+  const missing=client.createReferenceSource(async()=>{ throw new Error('File is no longer available'); },key=>key);
+  await assert.rejects(missing.codec.serialize('shared-id',signal),/no longer available/);
+});
+
+test('/library reports setup and empty search without manufacturing file references',async () => {
+  const { createReferenceSource }=await clientExports(),signal=new AbortController().signal;
+  const unconfigured=createReferenceSource(fakeApi(false).api,key=>key);
+  const setup=await unconfigured.candidates({ sessionId:'a' },{ query:'library',signal });
+  assert.equal(setup[0].description,'referenceSetup');
+  assert.equal(unconfigured.onPick({ candidate:setup[0] }),undefined);
+  const empty=createReferenceSource(fakeApi().api,key=>key);
+  const rows=await empty.candidates({ sessionId:'b' },{ query:'library:missing',signal });
+  assert.equal(rows[0].description,'referenceEmpty');
+  assert.equal(empty.onPick({ candidate:rows[0] }),undefined);
 });

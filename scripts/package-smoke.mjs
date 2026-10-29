@@ -27,7 +27,7 @@ try {
   const entry=await import(pathToFileURL(path.join(root,'src','host.mjs')));
   assert.equal(typeof entry.apply,'function');
   assert.equal(entry.Config.parse({}).directory,'');
-  assert.equal(entry.Config.parse(undefined).maxFileBytes,32 * 1024 * 1024);
+  assert.equal(entry.Config.parse(undefined).maxFileBytes,128 * 1024 * 1024);
   const manifest=JSON.parse(await readFile(path.join(root,'package.json'),'utf8'));
   assert.equal(manifest.scripts.prepare,undefined);
   assert.equal(manifest.scripts.prepack,undefined);

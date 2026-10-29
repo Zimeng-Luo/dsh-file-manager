@@ -5,7 +5,7 @@ import path from 'node:path';
 import { extractDocument, tokenize } from './extract.mjs';
 
 export const DEFAULTS = Object.freeze({
-  maxFileBytes: 32 * 1024 * 1024, maxTextChars: 1_000_000,
+  maxFileBytes: 128 * 1024 * 1024, maxTextChars: 1_000_000,
   chunkChars: 2400, maxScanFiles: 20000,
 });
 
