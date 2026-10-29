@@ -132,3 +132,19 @@ test('default 128 MiB cap accepts a real upload larger than the former 32 MiB li
   assert.equal(result.value.bytes,bytes.length);
   assert.deepEqual(await readFile(result.value.path),bytes);
 });
+
+
+test('large-upload validation still rejects invalid alphabet, length and padding',async t => {
+  const { base,request }=await runtimeFixture(t);
+  await request('configure',{ directory:path.join(base,'library') });
+  for (const base64 of ['A===','AA=A','AAAA=','____','a b=','====','a===','AA==\n']) {
+    const result=await request('upload',{ name:'invalid.bin',base64 });
+    assert.equal(result.ok,false,base64);
+    assert.equal(result.error.code,'invalid-upload',base64);
+  }
+  for (const base64 of ['TQ==','TWE=','TWFu']) {
+    const result=await request('upload',{ name:'valid.bin',base64 });
+    assert.equal(result.ok,true,JSON.stringify(result));
+    assert.deepEqual(await readFile(result.value.path),Buffer.from(base64,'base64'));
+  }
+});

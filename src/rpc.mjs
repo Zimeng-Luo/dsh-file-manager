@@ -6,6 +6,16 @@ function exact(payload,allowed) {
   if (!record(payload) || Object.keys(payload).some(key => !allowed.includes(key))) throw new LibraryError('bad-request','Invalid request fields.');
 }
 
+// Avoid a repeated-group regular expression over base64: V8 can overflow
+// its regexp stack on ordinary large files. Alphabet scanning plus a bounded
+// suffix check is linear and keeps the same padded RFC 4648 shape.
+function validBase64(value,maxBytes) {
+  if (typeof value !== 'string' || value.length > Math.ceil(maxBytes / 3) * 4 || value.length % 4 !== 0) return false;
+  if (/[^A-Za-z0-9+/=]/.test(value)) return false;
+  const padding=value.indexOf('=');
+  return padding === -1 || (padding >= value.length - 2 && ['=','=='].includes(value.slice(padding)));
+}
+
 /** Browser and model operations share the same storage manager. */
 export async function dispatch(manager,method,payload) {
   if (method === 'status') { exact(payload,[]); return manager.status(); }
@@ -27,8 +37,7 @@ export async function dispatch(manager,method,payload) {
     const { maxFileBytes } = await manager.status();
     let bytes;
     if (method === 'upload') {
-      if (typeof payload.base64 !== 'string' || payload.base64.length > Math.ceil(maxFileBytes / 3) * 4
-        || !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(payload.base64)) {
+      if (!validBase64(payload.base64,maxFileBytes)) {
         throw new LibraryError('invalid-upload','Invalid or oversized base64 file.');
       }
       bytes = Buffer.from(payload.base64,'base64');
