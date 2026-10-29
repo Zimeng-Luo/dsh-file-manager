@@ -97,7 +97,7 @@ try {
   const reference=await page.evaluate(async () => {
     const source=window.librarySource,session={sessionId:'other-workspace'},signal=new AbortController().signal;
     const rows=await source.candidates(session,{query:'library:家长调研',signal});
-    const file=rows.find(row=>JSON.parse(row.value).kind==='file');
+    const file=rows.find(row=>row.label==='家长调研问卷.docx');
     if (!file) throw Error('Library command did not find the DOCX');
     const result=source.onPick({candidate:file});
     const text=await source.codec.serialize(result.insert.ref,signal);
